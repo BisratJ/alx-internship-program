@@ -3,7 +3,7 @@
    free Supabase tier without changing the UI: all access goes through `Store`. */
 
 const IM = {
-  KEY: "alx-im-state-v1",
+  KEY: "alx-im-state-v2",
   SESSION: "alx-im-session",
   THEME: "alx-theme",
   STATUSES: [
@@ -36,7 +36,7 @@ IM.ALLDAYS = IM.PHASES.flatMap(p => p.days.map(d => ({ ...d, phase: p.id })));
 IM.statusLabel = id => (IM.STATUSES.find(s => s.id === id) || IM.STATUSES[0]).label;
 
 IM.USERS = [
-  { id: "u-admin",    name: "Bisrat Gizaw",   email: "bgizaw@sandtech.com",     role: "admin",  pillar: "Program Manager" },
+  { id: "u-admin",    name: "Admin",          email: "admin@alxinternship.app", role: "admin",  pillar: "Program Manager" },
   { id: "u-bitania",  name: "Bitania Dereje", email: "biti.dereje@gmail.com",   role: "intern", pillar: "Event Details Lead" },
   { id: "u-yosabeth", name: "Yosabeth Yared", email: "yosabethyared@gmail.com", role: "intern", pillar: "Marketing & Content" },
   { id: "u-juliana",  name: "Juliana Mussie", email: "julianamussie@gmail.com", role: "intern", pillar: "Outreach & Leads" },
@@ -44,42 +44,17 @@ IM.USERS = [
 ];
 IM.COHORT = { name: "Addis Sprint · Jun 2026" };
 
-/* ---------- seeding (so the cockpit looks alive on first run) ---------- */
+/* ---------- clean production seed (no demo data) ---------- */
 function seedState() {
-  const now = Date.now(), DAY = 86400000;
   const s = { progress: {}, logs: {}, journal: {}, deliverables: {}, achievements: {}, feedback: {} };
-  const interns = IM.USERS.filter(u => u.role === "intern");
-  // completion pattern per intern (how many of the 11 tasks done), plus a blocker for one
-  const plan = {
-    "u-bitania":  { done: 7, inprog: 1, blocked: 0, lastDays: 0 },
-    "u-yosabeth": { done: 9, inprog: 1, blocked: 0, lastDays: 1 },
-    "u-juliana":  { done: 4, inprog: 1, blocked: 1, lastDays: 4 },   // at-risk: blocked + stale
-    "u-mariam":   { done: 3, inprog: 2, blocked: 0, lastDays: 0 },
-  };
-  interns.forEach(u => {
-    const p = plan[u.id]; s.progress[u.id] = {}; s.logs[u.id] = []; s.journal[u.id] = [];
-    s.deliverables[u.id] = []; s.achievements[u.id] = []; s.feedback[u.id] = [];
-    let di = 0;
-    IM.ALLDAYS.forEach((d, idx) => {
-      let st = "not_started";
-      if (idx < p.done) st = "completed";
-      else if (idx < p.done + p.inprog) st = "in_progress";
-      else if (idx < p.done + p.inprog + p.blocked) st = "blocked";
-      s.progress[u.id][d.id] = { status: st, note: "", updatedAt: now - (IM.ALLDAYS.length - idx) * 3600000 };
-      if (st !== "not_started") {
-        s.logs[u.id].push({ id: "l" + u.id + d.id, taskId: d.id, status: st,
-          note: st === "completed" ? "Wrapped up " + d.title.toLowerCase() + "." : st === "blocked" ? "Stuck, waiting on vendor confirmation." : "Working on " + d.title.toLowerCase() + ".",
-          ts: now - (p.lastDays * DAY) - (IM.ALLDAYS.length - idx) * 1800000 });
-      }
-    });
-    s.logs[u.id].reverse();
+  IM.USERS.filter(u => u.role === "intern").forEach(u => {
+    s.progress[u.id] = {};     // all tasks start "not_started"
+    s.logs[u.id] = [];
+    s.journal[u.id] = [];
+    s.deliverables[u.id] = [];
+    s.achievements[u.id] = [];
+    s.feedback[u.id] = [];
   });
-  // a few achievements / feedback / journal to make profiles feel real
-  s.achievements["u-bitania"].push({ id: "a1", text: "Shipped the Day-2 pitch deck, approved first pass.", ts: now - 3 * DAY });
-  s.achievements["u-yosabeth"].push({ id: "a2", text: "Coffee Time + Game Day reel hit 1.2k views.", ts: now - 2 * DAY });
-  s.feedback["u-juliana"].push({ id: "f1", authorId: "u-admin", kind: "comment", content: "Day 9 looks blocked; let's unblock the vendor today. Ping me anytime.", ts: now - 1 * DAY });
-  s.feedback["u-bitania"].push({ id: "f2", authorId: "u-admin", kind: "comment", content: "Great pitch structure; tighten the budget slide and you're golden.", ts: now - 3 * DAY });
-  s.journal["u-mariam"].push({ id: "j1", content: "First time owning procurement end-to-end. Nervous but excited.", ts: now - 1 * DAY });
   return s;
 }
 
@@ -158,7 +133,9 @@ const Store = {
   },
   isAtRisk(internId) {
     const m = Store.metrics(internId);
-    const stale = (Date.now() - Store.lastActivity(internId)) > 3 * 86400000;
+    const last = Store.lastActivity(internId);
+    // only "stale" once they've actually started; a brand-new intern isn't at risk
+    const stale = last > 0 && (Date.now() - last) > 3 * 86400000;
     return m.blocked > 0 || (stale && m.pct < 100);
   },
   cohortMetrics() {

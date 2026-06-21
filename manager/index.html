@@ -13,16 +13,17 @@
 <body>
 <div class="signin">
   <div class="signin-card">
-    <div class="brand-row logo">__LOGO__ <span class="pname" style="border-left:1px solid var(--border);padding-left:10px">Intern Manager</span></div>
-    <h1>Welcome back</h1>
-    <div class="sub">Choose your profile to continue. Each person sees only what their role allows.</div>
+    <div class="brand-row logo" id="brandRow"></div>
+    <h1>Log in</h1>
+    <div class="sub">Choose your profile to continue. Each person only sees what their role allows.</div>
     <div class="who" id="who"></div>
-    <div class="signin-note">Demo mode: select a profile to explore. In production this is one-tap Google sign-in (interns keep their own private accounts).</div>
+    <a class="btn btn-ghost btn-sm" href="../index.html" style="margin-top:18px">&larr; Back to Home</a>
+    <div class="signin-note">Demo sign-in. In production this becomes one-tap email login, with each user keeping their own private account.</div>
   </div>
 </div>
 <script src="data.js"></script>
 <script>
-  document.querySelector(".brand-row").innerHTML = UI.logo + document.querySelector(".pname").outerHTML;
+  document.getElementById("brandRow").innerHTML = UI.logo;
   Store.init();
   const who = document.getElementById("who");
   who.innerHTML = Store.users().map(u=>`
