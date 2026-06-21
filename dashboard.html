@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Progress Dashboard — ALX Internship</title>
+<title>Progress Dashboard: ALX Internship</title>
 <meta name="description" content="Track your ALX internship: log daily activity, set task statuses, capture reflections and achievements, and monitor completion by phase." />
 <meta name="theme-color" content="#0452F0" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -42,7 +42,7 @@
     <div class="meta-row">
       <div>Overall: <b id="heroPct">0%</b></div>
       <div>Completed: <b id="heroDone">0/11</b></div>
-      <div>Last updated: <b id="heroUpdated">—</b></div>
+      <div>Last updated: <b id="heroUpdated">Not yet</b></div>
     </div>
   </div>
 </header>
@@ -147,7 +147,7 @@
   ALX.wireToggle($("themeToggle"));
 
   /* ---- build static selects + task list (once) ---- */
-  $("logDay").innerHTML = ALX.ALLDAYS.map(d=>`<option value="${d.id}">${d.label} — ${d.title}</option>`).join("");
+  $("logDay").innerHTML = ALX.ALLDAYS.map(d=>`<option value="${d.id}">${d.label}: ${d.title}</option>`).join("");
   $("logStatus").innerHTML = ALX.STATUSES.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
   $("logStatus").value = "in-progress";
 
@@ -227,20 +227,20 @@
 
     // on-track
     const ot = $("ontrack");
-    if(m.blocked>0){ ot.className="ontrack warn"; ot.textContent="⚠ "+m.blocked+" blocked — needs attention"; }
+    if(m.blocked>0){ ot.className="ontrack warn"; ot.textContent="⚠ "+m.blocked+" blocked, needs attention"; }
     else if(m.pct===100){ ot.className="ontrack good"; ot.textContent="🎉 Sprint complete!"; }
     else { ot.className="ontrack good"; ot.textContent="✓ On track"; }
 
     // last updated
-    $("heroUpdated").textContent = state.log.length ? ALX.timeAgo(state.log[0].ts) : "—";
+    $("heroUpdated").textContent = state.log.length ? ALX.timeAgo(state.log[0].ts) : "Not yet";
 
     // updates timeline
     const u = $("updates");
-    if(!state.log.length){ u.innerHTML = `<div class="empty">No activity yet — set a status or log your day to begin.</div>`; }
+    if(!state.log.length){ u.innerHTML = `<div class="empty">No activity yet. Set a status or log your day to begin.</div>`; }
     else {
       u.innerHTML = state.log.slice(0,12).map(e=>`
         <li class="s-${e.status}">
-          <div class="u-txt"><b>${dayTitle(e.dayId)}</b> — ${ALX.statusLabel(e.status)}${e.text?`: ${e.text.replace(/</g,'&lt;')}`:''}</div>
+          <div class="u-txt"><b>${dayTitle(e.dayId)}</b> · ${ALX.statusLabel(e.status)}${e.text?`: ${e.text.replace(/</g,'&lt;')}`:''}</div>
           <div class="u-time">${ALX.timeAgo(e.ts)}</div>
         </li>`).join("");
     }

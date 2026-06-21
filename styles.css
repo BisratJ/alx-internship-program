@@ -1,4 +1,4 @@
-/* ============ ALX Internship — shared design system ============ */
+/* ============ ALX Internship - shared design system ============ */
 :root{
   --tw-blue:#0452F0; --navy:#03134F; --ink:#1C1F2A; --purple:#5F3DC4; --paper:#F8F8F8;
   --lime:#C4E878; --jungle:#02B75E; --icy:#C5E5FF; --jasmine:#FDE791; --sunflower:#EAB308; --lavender:#E9DBFF; --palesky:#EBF6FF;
@@ -112,7 +112,7 @@ nav ul a:hover,nav ul a.active{color:var(--text);background:var(--primary-soft)}
 .pillar h3{font-size:1.16rem}
 .pillar p{color:var(--muted);font-size:.93rem}
 
-/* ===== ROADMAP — learning journey ===== */
+/* ===== ROADMAP - learning journey ===== */
 .week-tabs{display:inline-flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);padding:6px;border-radius:999px;margin-bottom:14px}
 .week-tabs button{font-family:inherit;font-weight:600;font-size:.9rem;padding:9px 20px;border-radius:999px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:.2s}
 .week-tabs button[aria-selected="true"]{background:var(--cta);color:#fff;box-shadow:0 6px 16px rgba(95,61,196,.3)}

@@ -1,4 +1,4 @@
-/* ============ ALX Internship — shared data + helpers ============ */
+/* ============ ALX Internship - shared data + helpers ============ */
 const ALX = {
   STORE: "alx-internship-state-v1",
   THEME: "alx-theme",
@@ -14,13 +14,13 @@ const ALX = {
       days: [
         { id: 1, label: "Tue · Day 1", tag: "Onboarding", title: "Onboarding & Alignment",
           desc: "Hub tour, team introductions, onboarding. First assignment: the events presentation. Pillar roles assigned by interest; research ALX culture and build a clean proposal deck covering planning, budgeting, and asset outlines." },
-        { id: 2, label: "Wed · Day 2", tag: "Pitch", title: "The Pitch — 11:00 AM",
+        { id: 2, label: "Wed · Day 2", tag: "Pitch", title: "The Pitch (11:00 AM)",
           desc: "Formal presentation to Manager/Team for strategic alignment. Afternoon shifts to internal department resource and procurement requests." },
         { id: 3, label: "Thu · Day 3", tag: "Go-Live", title: "Go-Live & Grassroots Activation",
           desc: "Promotional content and posters deployed across channels. On-the-ground campaign launches at the hub with a localized community photo challenge." },
         { id: 4, label: "Fri · Day 4", tag: "QA", title: "Quality Assurance & Dry Run",
           desc: "Full reconciliation of vendor orders, tech layouts, and setup requirements. Complete technical dry-run rehearsal at the venue." },
-        { id: 5, label: "Sat · Day 5", tag: "flag", title: "Live Execution — Coffee Time + Game Day",
+        { id: 5, label: "Sat · Day 5", tag: "flag", title: "Live Execution: Coffee Time + Game Day",
           desc: "Joint hosting of Coffee Time + Game Day. Focus on high-energy engagement, culture-building, and attendee metrics." },
       ],
     },
