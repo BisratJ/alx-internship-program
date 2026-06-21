@@ -299,12 +299,12 @@ select:focus,textarea:focus,input:focus{outline:none;border-color:var(--primary)
 /* sign-in */
 .signin{min-height:100vh;display:grid;place-items:center;background:linear-gradient(150deg,var(--hero-from),var(--hero-to));padding:40px 20px;position:relative;overflow:hidden}
 .signin::before{content:"";position:absolute;inset:0;background:radial-gradient(600px 320px at 85% -10%,rgba(196,232,120,.22),transparent 60%),radial-gradient(500px 320px at 5% 110%,rgba(95,61,196,.4),transparent 60%)}
-.signin-card{position:relative;width:100%;max-width:520px;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);padding:34px}
-.signin-card .brand-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-.signin-card .brand-row svg{height:26px}.signin-card .brand-row svg path{fill:var(--logo)}
-.signin-card h1{font-size:1.4rem;margin:14px 0 4px}
-.signin-card .sub{color:var(--muted);font-size:.92rem;margin-bottom:20px}
-.who{display:flex;flex-direction:column;gap:10px}
+.signin-card{position:relative;width:100%;max-width:460px;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);padding:40px 36px;text-align:center}
+.signin-card .brand-row{display:flex;justify-content:center;align-items:center;margin-bottom:16px}
+.signin-card .brand-row svg{height:34px}.signin-card .brand-row svg path{fill:var(--logo)}
+.signin-card h1{font-size:1.6rem;margin:0 0 6px}
+.signin-card .sub{color:var(--muted);font-size:.92rem;margin-bottom:24px;max-width:36ch;margin-inline:auto}
+.who{display:flex;flex-direction:column;gap:10px;text-align:left}
 .who button{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;cursor:pointer;font-family:inherit;transition:transform .15s var(--ease),border-color .15s,box-shadow .2s}
 .who button:hover{transform:translateY(-2px);border-color:var(--primary);box-shadow:var(--shadow)}
 .who .nm{font-weight:600;font-size:.96rem;color:var(--text)}

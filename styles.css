@@ -102,15 +102,14 @@ nav ul a:hover,nav ul a.active{color:var(--text);background:var(--primary-soft)}
 .skill p{color:var(--muted);font-size:.92rem}
 
 /* PILLARS */
-.pillars{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-.pillar{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;box-shadow:var(--shadow);overflow:hidden;transition:transform .2s var(--ease),box-shadow .2s}
-.pillar:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
-.pillar .bar{position:absolute;top:0;left:0;height:5px;width:100%}
-.pillar .num{font-size:.74rem;font-weight:700;letter-spacing:.14em;color:var(--muted)}
-.pillar .head{display:flex;align-items:center;gap:14px;margin:10px 0 12px}
-.pillar .ico{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
-.pillar h3{font-size:1.16rem}
-.pillar p{color:var(--muted);font-size:.93rem}
+.pillars{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+.pillar{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent,var(--primary));border-radius:18px;padding:28px 28px 26px;box-shadow:var(--shadow);transition:transform .22s var(--ease),box-shadow .22s}
+.pillar:hover{transform:translateY(-5px);box-shadow:var(--shadow-lg)}
+.pillar .pnum{position:absolute;top:16px;right:24px;font-size:3.2rem;font-weight:900;line-height:1;color:var(--accent,var(--primary));opacity:.1;letter-spacing:-.04em;pointer-events:none}
+.pillar .ico{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;margin-bottom:18px}
+.pillar h3{font-size:1.2rem;margin-bottom:8px}
+.pillar p{color:var(--muted);font-size:.93rem;line-height:1.6}
+.pillar p .with{color:var(--primary);font-weight:600;white-space:nowrap}
 
 /* ===== ROADMAP - learning journey ===== */
 .week-tabs{display:inline-flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);padding:6px;border-radius:999px;margin-bottom:14px}
