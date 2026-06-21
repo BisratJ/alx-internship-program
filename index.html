@@ -140,13 +140,6 @@
       <button role="tab" aria-selected="true" data-week="1">Week 1 · Retention</button>
       <button role="tab" aria-selected="false" data-week="2">Week 2 · Growth</button>
     </div>
-    <div class="legend reveal">
-      <span><i style="background:var(--jungle)"></i>Completed</span>
-      <span><i style="background:var(--sunflower)"></i>In progress</span>
-      <span><i style="background:var(--blocked)"></i>Blocked</span>
-      <span><i style="background:var(--border)"></i>Upcoming</span>
-    </div>
-
     <div class="tl active" data-tl="1">
       <div class="week-title"><h3>Week 1</h3><span class="theme">Community Retention via Coffee Time + Game Day</span></div>
       <div class="journey" id="journey1"></div>
@@ -222,21 +215,13 @@
 
 <script src="app.js"></script>
 <script>
-  const state = ALX.load();
-  // current = first day in order not completed
-  const current = (ALX.ALLDAYS.find(d => state.tasks[d.id].status !== "completed") || {}).id;
-
   function msHTML(d){
-    const st = state.tasks[d.id].status;
     const flag = d.tag === "flag";
     const tagText = flag ? "Flagship event" : d.tag;
-    const cls = [st, d.id===current && st!=="completed" ? "current" : ""].join(" ");
-    const nodeInner = st==="completed" ? "✓" : (st==="blocked" ? "!" : d.id);
-    return `<details class="ms ${cls}" ${d.id===current?'open':''}>
+    return `<details class="ms">
       <summary>
-        <div class="node" aria-hidden="true">${nodeInner}</div>
+        <div class="node" aria-hidden="true">${d.id}</div>
         <div class="sum-main"><div class="dnum">${d.label}</div><div class="mtitle">${d.title}</div></div>
-        <span class="sbadge s-${st}">${ALX.statusLabel(st)}</span>
         <span class="chev" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
       </summary>
       <div class="body"><span class="tag ${flag?'flag':''}">${tagText}</span><p>${d.desc}</p></div>
