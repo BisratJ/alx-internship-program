@@ -1,20 +1,21 @@
-# ALX Internship Program, Community Growth Sprint
+# ALX Internship Program & Intern Manager
 
-A modern, responsive web app for a 14-day, project-based ALX internship: program overview, an interactive two-week roadmap, deliverables, brand toolkit, FAQs, and a dedicated **Progress Dashboard** for daily activity logging and milestone tracking.
+A complete, free, lightweight platform for the ALX Community Growth Sprint, in two connected parts:
 
-## Stack
-Static HTML/CSS/JS, no build step. Light & dark mode, fully responsive, accessible. Built on the ALX brand (Poppins; Twilight Blue, Deep Navy, CTA Purple + secondary palette).
+1. **Program landing page** (`index.html`) - the public-facing program overview: roadmap, pillars, deliverables, brand toolkit, and FAQ. Its calls-to-action open the management app.
+2. **Intern Manager** (`manager/`) - a multi-user internship management system:
+   - `manager/index.html` - sign in (choose profile; production = one-tap Google sign-in)
+   - `manager/admin.html` - Program Manager cockpit: cohort KPIs, at-risk surfacing, intern cards/table, individual profile drawer, feedback + weekly evaluation, CSV export
+   - `manager/intern.html` - personalized intern dashboard: roadmap, daily log, journal, deliverables, achievements, feedback
+   - `manager/data.js` - seed data + `Store` API (swap to a free Supabase tier later without touching the UI)
 
-## Files
-- `index.html`, landing page (overview, pillars, roadmap, deliverables, toolkit, FAQ)
-- `dashboard.html`, progress tracking dashboard (statuses, notes, achievements, phase progress)
-- `styles.css`, shared design system
-- `app.js`, shared roadmap data + helpers (state, theme, metrics)
+## Tech stack (100% free, no paid services)
+Vanilla HTML / CSS / JavaScript (no framework, no build step), Google Fonts, client-side `localStorage` data layer. Deploys free on Vercel or GitHub Pages. Light + dark mode, responsive, accessible.
 
-## Deploy on Vercel
-No configuration needed, it's a static site.
-1. Import this repo at vercel.com → **Add New… → Project**.
-2. Framework preset: **Other**. No build command, no output dir.
-3. **Deploy.** `index.html` serves at the root; `dashboard.html` at `/dashboard.html`.
+## Roles & privacy
+Each intern sees only their own data; the admin sees the whole cohort. All access flows through one `Store` API, so moving to a real backend (free Supabase tier: Postgres + Row-Level Security) only means reimplementing `Store`, not the UI. Full design in `Multi-User-Platform-Architecture.md`.
 
-Progress is stored per-browser via `localStorage`.
+## Deploy
+Static site, no config needed. Import on Vercel (framework: Other) and deploy. `index.html` serves at root; the app at `/manager/`.
+
+Note: localStorage is per-browser, so the current build is single-device (great for demo). For true cross-device multi-user, wire `Store` to the free Supabase tier (next phase).
