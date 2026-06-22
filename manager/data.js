@@ -65,8 +65,8 @@ const DB = {
     // fall back to a minimal profile if the row isn't there yet
     return data || { id: user.id, email: user.email, full_name: user.email, role: "intern", pillar: "" };
   },
-  async signIn(email) {
-    return await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+  async signInPassword(email, password) {
+    return await sb.auth.signInWithPassword({ email, password });
   },
   async signOut() { await sb.auth.signOut(); },
 

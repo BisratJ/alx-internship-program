@@ -22,10 +22,11 @@
       <div class="logo" id="brandRow"></div>
       <h1>Log in</h1>
     </div>
-    <div class="sub">Enter your email and we'll send you a secure sign-in link. No password needed.</div>
+    <div class="sub">Sign in with the email and password set up by your program admin.</div>
     <form class="logform" id="loginForm">
       <input type="email" id="email" placeholder="you@example.com" autocomplete="email" required />
-      <button class="btn btn-primary full" type="submit" id="loginBtn">Email me a login link</button>
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
+      <button class="btn btn-primary full" type="submit" id="loginBtn">Sign in</button>
     </form>
     <div id="msg" class="signin-note" style="margin-top:14px"></div>
     <a class="btn btn-ghost btn-sm" href="../index.html" style="margin-top:14px">&larr; Back to Home</a>
@@ -46,20 +47,18 @@
   document.getElementById("loginForm").addEventListener("submit", async e => {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
     const btn = document.getElementById("loginBtn"), msg = document.getElementById("msg");
-    if (!email) return;
-    btn.disabled = true; btn.textContent = "Sending…";
-    const { error } = await DB.signIn(email);
-    btn.disabled = false; btn.textContent = "Email me a login link";
+    if (!email || !password) return;
+    btn.disabled = true; btn.textContent = "Signing in…";
+    const { error } = await DB.signInPassword(email, password);
+    btn.disabled = false; btn.textContent = "Sign in";
     if (error) {
       console.error("sign-in error", error);
-      const detail = error.message || ("status " + (error.status || "unknown"));
       msg.style.color = "var(--blocked)";
-      msg.textContent = "Couldn't send link: " + detail + ". The free built-in email is capped at ~2/hour; set up SMTP to remove the limit.";
-    } else {
-      msg.style.color = "var(--jungle)";
-      msg.textContent = "Check " + email + " for your secure sign-in link (check spam too).";
+      msg.textContent = "Sign-in failed: " + (error.message || "check your email and password.");
     }
+    // success: onAuthStateChange routes by role
   });
 </script>
 </body>
