@@ -142,7 +142,7 @@
   }
   function renderReport(){
     const c=agg();
-    const dist = COH.map(x=>`${(x.p.full_name||x.p.email).split(" ")[0]} ${x.m.pct}%`).join(" · ") || "—";
+    const dist = COH.map(x=>`${(x.p.full_name||x.p.email).split(" ")[0]} ${x.m.pct}%`).join(" · ") || "-";
     document.getElementById("report").innerHTML = `
       <div class="perf"><div class="pgrid">
         <div class="pcell"><b>${c.avg}%</b><span>Average completion</span></div>
@@ -167,7 +167,7 @@
     document.getElementById("exportCsv").addEventListener("click",()=>{
       const rows=[["Name","Email","Pillar","Completion %","Completed","Blocked","Status","Last active"]];
       COH.forEach(c=>rows.push([c.p.full_name||"",c.p.email,c.p.pillar||"",c.m.pct,c.m.completed,c.m.blocked,
-        c.m.blocked>0?"Blocked":c.atRisk?"At risk":"On track", c.last?new Date(c.last).toISOString().slice(0,10):"—"]));
+        c.m.blocked>0?"Blocked":c.atRisk?"At risk":"On track", c.last?new Date(c.last).toISOString().slice(0,10):"-"]));
       const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
       const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="alx-cohort-report.csv";a.click();URL.revokeObjectURL(a.href);
     });

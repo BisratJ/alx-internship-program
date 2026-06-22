@@ -60,7 +60,7 @@ nav ul a:hover,nav ul a.active{color:var(--text);background:var(--primary-soft)}
 [data-theme="light"] .moon{display:block}[data-theme="light"] .sun{display:none}
 [data-theme="dark"] .moon{display:none}[data-theme="dark"] .sun{display:block}
 
-/* HERO — premium, minimal, theme-aware */
+/* HERO: premium, minimal, theme-aware */
 .hero{position:relative;background:var(--bg);color:var(--text);overflow:hidden;border-bottom:1px solid var(--border)}
 .hero-aura{position:absolute;inset:0;pointer-events:none;background:
   radial-gradient(640px 400px at 84% -10%,rgba(4,82,240,.16),transparent 62%),
