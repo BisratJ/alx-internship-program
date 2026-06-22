@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Cohort Cockpit: ALX Intern Manager</title>
+<title>Internship Dashboard: ALX Intern Manager</title>
 <meta name="theme-color" content="#0452F0" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/png" sizes="any" href="/favicon.png" />
@@ -32,7 +32,7 @@
 <main class="app-main" id="main">
   <div class="wrap">
     <div class="page-head">
-      <div><h1>Cohort Cockpit</h1><div class="muted" id="cohortName"></div></div>
+      <div><h1>Internship Dashboard</h1><div class="muted" id="cohortName"></div></div>
       <div style="display:flex;gap:10px;align-items:center">
         <div class="seg" id="viewToggle"><button data-view="cards" aria-selected="true">Cards</button><button data-view="table" aria-selected="false">Table</button></div>
         <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
@@ -105,13 +105,13 @@
     wireOpen();
   }
   function renderTable(){
-    document.getElementById("tableWrap").innerHTML = `<table class="ctable"><thead><tr>
+    document.getElementById("tableWrap").innerHTML = `<div class="table-scroll"><table class="ctable"><thead><tr>
       <th>Intern</th><th>Pillar</th><th>Progress</th><th>Status</th><th>Blocked</th><th>Last active</th></tr></thead><tbody>${
       Store.interns().map(i=>{const m=Store.metrics(i.id);
         return `<tr data-open="${i.id}"><td><div class="nmcell"><span class="avatar sm">${UI.initials(i.name)}</span>${i.name}</div></td>
-        <td>${i.pillar}</td><td><span class="minibar"><i style="width:${m.pct}%"></i></span> ${m.pct}%</td>
+        <td>${i.pillar}</td><td><span class="prog"><span class="minibar"><i style="width:${m.pct}%"></i></span>${m.pct}%</span></td>
         <td>${statusPill(i.id)}</td><td>${m.blocked||"0"}</td><td>${UI.timeAgo(Store.lastActivity(i.id))}</td></tr>`;}).join("")
-    }</tbody></table>`;
+    }</tbody></table></div>`;
     wireOpen();
   }
   function renderReport(){
