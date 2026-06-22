@@ -58,6 +58,15 @@
   (async () => { if (await DB.session()) routeByRole(); })();
   sb.auth.onAuthStateChange((event, session) => { if (session) routeByRole(); });
 
+  // Strip invisible characters (zero-width / non-breaking spaces) that sneak in via paste
+  // and make the browser's native email validator reject an otherwise-valid address.
+  const emailEl = document.getElementById("email");
+  const stripInvisible = v => v.replace(/[\u200B-\u200D\u2060\uFEFF\u00A0]/g, "").trim();
+  emailEl.addEventListener("input", () => {
+    const cleaned = stripInvisible(emailEl.value);
+    if (cleaned !== emailEl.value) emailEl.value = cleaned;
+  });
+
   document.getElementById("loginForm").addEventListener("submit", async e => {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
