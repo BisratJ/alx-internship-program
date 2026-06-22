@@ -73,7 +73,7 @@
     document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
     document.getElementById("navAvatar").textContent = UI.initials(me.full_name || me.email || "Admin");
     document.getElementById("hello").textContent = "Welcome " + (me.full_name || "Admin") + "!";
-    document.getElementById("welcomeNote").textContent = "Manage, review, and guide the internship experience from here \u2014 with clarity and confidence.";
+    document.getElementById("welcomeNote").textContent = "Manage, review, and shape the internship journey from here.";
     UI.wireToggle(document.getElementById("themeToggle"));
     document.getElementById("logout").addEventListener("click", async ()=>{ await DB.signOut(); location.href="index.html"; });
     wireViewToggle(); wireExport(); wireDrawerBase();
