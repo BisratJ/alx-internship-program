@@ -3,7 +3,7 @@
    free Supabase tier without changing the UI: all access goes through `Store`. */
 
 const IM = {
-  KEY: "alx-im-state-v2",
+  KEY: "alx-im-state-v3",
   SESSION: "alx-im-session",
   THEME: "alx-theme",
   STATUSES: [
@@ -15,20 +15,19 @@ const IM = {
   PHASES: [
     { id: 1, name: "Week 1", theme: "Community Retention via Coffee Time + Game Day",
       days: [
-        { id: 1, label: "Day 1", title: "Onboarding & Alignment", tag: "Onboarding", desc: "Hub tour, team intros, onboarding. First assignment: the events presentation. Research ALX culture and build a clean proposal deck (planning, budgeting, asset outlines)." },
-        { id: 2, label: "Day 2", title: "The Pitch (11:00 AM)", tag: "Pitch", desc: "Formal presentation to Manager/Team for strategic alignment. Afternoon: internal resource and procurement requests." },
-        { id: 3, label: "Day 3", title: "Go-Live & Grassroots Activation", tag: "Go-Live", desc: "Promotional content and posters deployed across channels. On-the-ground campaign launches at the hub with a community photo challenge." },
-        { id: 4, label: "Day 4", title: "Quality Assurance & Dry Run", tag: "QA", desc: "Reconcile vendor orders, tech layouts, setup. Full technical dry-run rehearsal at the venue." },
-        { id: 5, label: "Day 5", title: "Live Execution: Coffee Time + Game Day", tag: "Flagship", flag: true, desc: "Joint hosting of Coffee Time + Game Day. High-energy engagement, culture-building, attendee metrics." },
+        { id: 1, label: "Tue · Day 1", title: "Onboarding & Alignment", tag: "Onboarding", desc: "Hub tour, team intros, onboarding. First assignment: the events presentation. Research ALX culture and build a clean proposal deck (planning, budgeting, asset outlines)." },
+        { id: 2, label: "Wed · Day 2", title: "The Pitch (11:00 AM)", tag: "Pitch", desc: "Formal presentation to Manager/Team for strategic alignment. Afternoon: internal resource and procurement requests." },
+        { id: 3, label: "Thu · Day 3", title: "Go-Live & Grassroots Activation", tag: "Go-Live", desc: "Promotional content and posters deployed across channels. On-the-ground campaign launches at the hub with a community photo challenge." },
+        { id: 4, label: "Fri · Day 4", title: "Quality Assurance & Dry Run", tag: "QA", desc: "Reconcile vendor orders, tech layouts, setup. Full technical dry-run rehearsal at the venue." },
+        { id: 5, label: "Sat · Day 5", title: "Live Execution: Coffee Time + Game Day", tag: "Flagship", flag: true, desc: "Joint hosting of Coffee Time + Game Day. High-energy engagement, culture-building, attendee metrics." },
       ] },
     { id: 2, name: "Week 2", theme: "Growth & Pipeline Acquisition",
       days: [
-        { id: 7, label: "Day 7", title: "Retrospective & Kickoff", tag: "Retro", desc: "Analyze Week 1 engagement metrics; kick off the second project." },
-        { id: 8, label: "Day 8", title: "Acquisition Strategy", tag: "Strategy", desc: "Design a presentation deck optimized for converting prospective learners." },
-        { id: 9, label: "Day 9", title: "Targeted Campaign", tag: "Campaign", desc: "Deploy marketing assets across networks; coordinate with Community Ambassadors for warm pipelines." },
-        { id: 10, label: "Day 10", title: "Operational Efficiency", tag: "Ops", desc: "Secure signup pathways (QR/forms), validate RSVP data, finalize catering." },
-        { id: 11, label: "Day 11", title: "Presentation Polishing", tag: "Polish", desc: "Mock pitch sessions: public-speaking clarity, delivery pace, room prep." },
-        { id: 12, label: "Day 12", title: "The Grand Finale", tag: "Flagship", flag: true, desc: "Applicant Info Session driving real-time registrations, followed by an Ambassador appreciation mixer." },
+        { id: 6, label: "Tue · Day 6", title: "Retrospective & Kickoff", tag: "Retro", desc: "Analyze Week 1 engagement metrics; kick off the second project." },
+        { id: 7, label: "Wed · Day 7", title: "Acquisition Strategy", tag: "Strategy", desc: "Design a presentation deck optimized for converting prospective learners." },
+        { id: 8, label: "Thu · Day 8", title: "Targeted Campaign", tag: "Campaign", desc: "Deploy marketing assets across networks; coordinate with Community Ambassadors for warm pipelines." },
+        { id: 9, label: "Fri · Day 9", title: "Operational Efficiency & Polishing", tag: "Ops", desc: "Secure signup pathways (QR/forms), validate RSVP data, finalize catering, and run mock pitch sessions for delivery and room prep." },
+        { id: 10, label: "Sat · Day 10", title: "The Grand Finale", tag: "Flagship", flag: true, desc: "Applicant Info Session driving real-time registrations, followed by an Ambassador appreciation mixer." },
       ] },
   ],
 };

@@ -43,7 +43,7 @@
       <aside class="side-card">
         <div style="display:flex;align-items:center;gap:14px">
           <span id="ring"></span>
-          <div><div style="font-weight:700" id="pctlabel">0% complete</div><div class="muted" style="font-size:.82rem" id="taskcount">0 of 11 tasks</div></div>
+          <div><div style="font-weight:700" id="pctlabel">0% complete</div><div class="muted" style="font-size:.82rem" id="taskcount">0 of 10 tasks</div></div>
         </div>
         <div id="phasebars" style="margin-top:16px"></div>
         <div class="muted" style="font-size:.82rem;margin-top:14px" id="lastact"></div>
@@ -114,7 +114,7 @@
   const ID = me.id;
   document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
   document.getElementById("navAvatar").textContent = UI.initials(me.name);
-  document.getElementById("hello").textContent = "Hi, " + me.name.split(" ")[0];
+  document.getElementById("hello").textContent = "Welcome, " + me.name + ", to your Internship Program.";
   document.getElementById("subhead").textContent = me.pillar + " · " + IM.COHORT.name;
   UI.wireToggle(document.getElementById("themeToggle"));
   document.getElementById("logout").addEventListener("click",()=>{ Store.logout(); location.href="index.html"; });
