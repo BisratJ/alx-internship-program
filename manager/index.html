@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sign in: ALX Intern Manager</title>
-<meta name="theme-color" content="#0452F0" />
+<title>Log in: ALX Intern Manager</title>
+<meta name="theme-color" content="#1C1F2A" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/png" sizes="any" href="/favicon.png" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 </head>
 <body>
 <div class="signin">
@@ -20,28 +22,38 @@
       <div class="logo" id="brandRow"></div>
       <h1>Log in</h1>
     </div>
-    <div class="sub">Choose your profile to continue. Each person only sees what their role allows.</div>
-    <div class="who" id="who"></div>
-    <a class="btn btn-ghost btn-sm" href="../index.html" style="margin-top:18px">&larr; Back to Home</a>
-    <div class="signin-note">Demo sign-in. In production this becomes one-tap email login, with each user keeping their own private account.</div>
+    <div class="sub">Enter your email and we'll send you a secure sign-in link. No password needed.</div>
+    <form class="logform" id="loginForm">
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email" required />
+      <button class="btn btn-primary full" type="submit" id="loginBtn">Email me a login link</button>
+    </form>
+    <div id="msg" class="signin-note" style="margin-top:14px"></div>
+    <a class="btn btn-ghost btn-sm" href="../index.html" style="margin-top:14px">&larr; Back to Home</a>
   </div>
 </div>
 <script src="data.js"></script>
 <script>
   document.getElementById("brandRow").innerHTML = UI.logo;
-  Store.init();
-  const who = document.getElementById("who");
-  who.innerHTML = Store.users().map(u=>`
-    <button data-id="${u.id}">
-      <span class="avatar sm">${UI.initials(u.name)}</span>
-      <span><span class="nm">${u.name}</span><br><span class="rl">${u.role==='admin'?'Program Manager (Admin)':'Intern · '+u.pillar}</span></span>
-      <span class="go" aria-hidden="true">→</span>
-    </button>`).join("");
-  who.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
-    Store.login(b.dataset.id);
-    const u = Store.user(b.dataset.id);
-    location.href = u.role==='admin' ? 'admin.html' : 'intern.html';
-  }));
+
+  async function routeByRole(){
+    const me = await DB.me();
+    location.href = (me && me.role === "admin") ? "admin.html" : "intern.html";
+  }
+  // already signed in (or just returned from a magic link)?
+  (async () => { if (await DB.session()) routeByRole(); })();
+  sb.auth.onAuthStateChange((event, session) => { if (session) routeByRole(); });
+
+  document.getElementById("loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const btn = document.getElementById("loginBtn"), msg = document.getElementById("msg");
+    if (!email) return;
+    btn.disabled = true; btn.textContent = "Sending…";
+    const { error } = await DB.signIn(email);
+    btn.disabled = false; btn.textContent = "Email me a login link";
+    if (error) { msg.style.color = "var(--blocked)"; msg.textContent = "Couldn't send link: " + error.message; }
+    else { msg.style.color = "var(--jungle)"; msg.textContent = "Check " + email + " for your secure sign-in link."; }
+  });
 </script>
 </body>
 </html>

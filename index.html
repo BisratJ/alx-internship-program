@@ -222,18 +222,22 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="manager/config.js"></script>
 <script src="manager/data.js"></script>
 <script>
-  // Personalized welcome: if a participant is signed in (manager session), greet them by name.
-  try {
-    const wu = (window.Store && Store.currentUser) ? Store.currentUser() : null;
-    if (wu) {
+  // Personalized welcome: if a participant is signed in, greet them by name.
+  (async () => {
+    try {
+      if (!(window.DB && await DB.session())) return;
+      const wu = await DB.me();
+      if (!wu) return;
       const wb = document.getElementById("welcomeBanner");
-      wb.innerHTML = 'Welcome, <b>' + wu.name + '</b>, to your Internship Program <span aria-hidden="true">&rarr;</span>';
+      wb.innerHTML = 'Welcome, <b>' + UI.esc(wu.full_name || wu.email) + '</b>, to your Internship Program <span aria-hidden="true">&rarr;</span>';
       wb.href = wu.role === "admin" ? "manager/admin.html" : "manager/intern.html";
       wb.hidden = false;
-    }
-  } catch (e) {}
+    } catch (e) {}
+  })();
 
   function msHTML(d){
     const flag = d.tag === "flag";

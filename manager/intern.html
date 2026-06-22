@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -107,50 +109,63 @@
 
 <script src="data.js"></script>
 <script>
-  Store.init();
-  const me = Store.currentUser();
-  if(!me){ location.href="index.html"; }
-  else if(me.role==="admin"){ location.href="admin.html"; }
-  const ID = me.id;
-  document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
-  document.getElementById("navAvatar").textContent = UI.initials(me.name);
-  document.getElementById("hello").textContent = "Welcome, " + me.name + ", to your Internship Program.";
-  document.getElementById("subhead").textContent = me.pillar + " · " + IM.COHORT.name;
-  UI.wireToggle(document.getElementById("themeToggle"));
-  document.getElementById("logout").addEventListener("click",()=>{ Store.logout(); location.href="index.html"; });
+  let ID, me, week = 1;
+  const S = { prog:{}, last:0, logs:[], journal_entries:[], deliverables:[], achievements:[], feedback:[] };
 
-  // selects
-  document.getElementById("logTask").innerHTML = IM.ALLDAYS.map(d=>`<option value="${d.id}">${d.label}: ${d.title}</option>`).join("");
-  document.getElementById("logStatus").innerHTML = IM.STATUSES.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
-  document.getElementById("logStatus").value="in_progress";
+  (async function boot(){
+    if (!(await DB.session())) { location.href = "index.html"; return; }
+    me = await DB.me();
+    if (me && me.role === "admin") { location.href = "admin.html"; return; }
+    ID = me.id;
+    document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
+    document.getElementById("navAvatar").textContent = UI.initials(me.full_name || me.email);
+    document.getElementById("hello").textContent = "Welcome, " + (me.full_name || me.email) + ", to your Internship Program.";
+    document.getElementById("subhead").textContent = (me.pillar || "Intern") + " · " + IM.COHORT.name;
+    UI.wireToggle(document.getElementById("themeToggle"));
+    document.getElementById("logout").addEventListener("click", async () => { await DB.signOut(); location.href = "index.html"; });
 
-  // week segment (filter roadmap)
-  let week = 1;
-  const seg = document.querySelector(".seg");
-  seg.innerHTML = IM.PHASES.map(p=>`<button role="tab" data-week="${p.id}" aria-selected="${p.id===1}">${p.name}</button>`).join("");
-  seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
-    seg.querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected","false"));
-    b.setAttribute("aria-selected","true"); week=+b.dataset.week; renderRoadmap();
-  }));
+    document.getElementById("logTask").innerHTML = IM.ALLDAYS.map(d=>`<option value="${d.id}">${d.label}: ${d.title}</option>`).join("");
+    document.getElementById("logStatus").innerHTML = IM.STATUSES.map(s=>`<option value="${s.id}">${s.label}</option>`).join("");
+    document.getElementById("logStatus").value = "in_progress";
+
+    const seg = document.querySelector(".seg");
+    seg.innerHTML = IM.PHASES.map(p=>`<button role="tab" data-week="${p.id}" aria-selected="${p.id===1}">${p.name}</button>`).join("");
+    seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+      seg.querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected","false"));
+      b.setAttribute("aria-selected","true"); week=+b.dataset.week; renderRoadmap();
+    }));
+    wireTabs(); wireForms();
+    await refreshAll();
+  })();
+
+  async function refreshAll(){
+    const [prog,last,logs,journal,deliv,achv,fb] = await Promise.all([
+      DB.progress(ID), DB.lastActivity(ID), DB.logs(ID),
+      DB.list("journal_entries",ID), DB.list("deliverables",ID), DB.list("achievements",ID), DB.list("feedback",ID) ]);
+    S.prog=prog; S.last=last; S.logs=logs; S.journal_entries=journal; S.deliverables=deliv; S.achievements=achv; S.feedback=fb;
+    renderStats(); renderRoadmap(); renderLogs(); renderJournal(); renderDeliverables(); renderAchievements(); renderFeedback();
+  }
+  async function refreshProgress(){
+    [S.prog,S.last,S.logs] = await Promise.all([DB.progress(ID),DB.lastActivity(ID),DB.logs(ID)]);
+    renderStats(); renderRoadmap(); renderLogs();
+  }
 
   function renderStats(){
-    const m = Store.metrics(ID);
+    const m = IM.metrics(S.prog);
     document.getElementById("ring").innerHTML = UI.ring(m.pct, 64);
     document.getElementById("pctlabel").textContent = m.pct + "% complete";
     document.getElementById("taskcount").textContent = m.completed + " of " + m.total + " tasks";
     document.getElementById("phasebars").innerHTML = IM.PHASES.map(p=>{
-      const pm = Store.phaseMetrics(ID,p.id);
+      const pm = IM.phaseMetrics(S.prog,p.id);
       return `<div class="phase-row"><div class="ptop"><span class="pp">${p.name}</span><span>${pm.done}/${pm.total}</span></div><div class="bar sm"><i style="width:${pm.pct}%"></i></div></div>`;
     }).join("");
-    const la = Store.lastActivity(ID);
-    document.getElementById("lastact").textContent = "Last activity: " + UI.timeAgo(la) + (m.blocked? " · ⚠ "+m.blocked+" blocked":"");
+    document.getElementById("lastact").textContent = "Last activity: " + UI.timeAgo(S.last) + (m.blocked? " · ⚠ "+m.blocked+" blocked":"");
   }
 
   function renderRoadmap(){
-    const prog = Store.progress(ID);
     const days = IM.PHASES.find(p=>p.id===week).days;
     document.getElementById("roadmap").innerHTML = days.map(d=>{
-      const t = prog[d.id] || {status:"not_started"};
+      const t = S.prog[d.id] || {status:"not_started"};
       const node = t.status==="completed"?"✓":t.status==="blocked"?"!":d.id;
       return `<details class="ms ${t.status.replace('_','-')}">
         <summary>
@@ -160,67 +175,59 @@
         </summary>
         <div class="body">
           <span class="tag ${d.flag?'flag':''}">${d.tag}</span><p>${d.desc}</p>
-          <div class="frow" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
-            <select class="rstat" data-task="${d.id}" aria-label="Status">${IM.STATUSES.map(s=>`<option value="${s.id}" ${s.id===t.status?'selected':''}>${s.label}</option>`).join("")}</select>
-          </div>
+          <select class="rstat" data-task="${d.id}" aria-label="Status" style="margin-top:6px">${IM.STATUSES.map(s=>`<option value="${s.id}" ${s.id===t.status?'selected':''}>${s.label}</option>`).join("")}</select>
           <textarea class="rnote full" data-task="${d.id}" placeholder="Reflection for this milestone…" style="margin-top:8px;min-height:44px">${UI.esc(t.note||"")}</textarea>
         </div>
       </details>`;
     }).join("");
-    document.querySelectorAll(".rstat").forEach(sel=>sel.addEventListener("change",()=>{
-      Store.setStatus(ID,+sel.dataset.task,sel.value); renderStats(); renderRoadmap(); renderLogs();
+    document.querySelectorAll(".rstat").forEach(sel=>sel.addEventListener("change", async ()=>{
+      sel.disabled=true; await DB.setStatus(ID,+sel.dataset.task,sel.value,(S.prog[+sel.dataset.task]||{}).note||""); await refreshProgress();
     }));
-    document.querySelectorAll(".rnote").forEach(ta=>ta.addEventListener("change",()=>{
-      Store.setNote(ID,+ta.dataset.task,ta.value.trim());
+    document.querySelectorAll(".rnote").forEach(ta=>ta.addEventListener("change", async ()=>{
+      await DB.setNote(ID,+ta.dataset.task,ta.value.trim());
     }));
   }
 
   function renderLogs(){
-    const logs = Store.list("logs",ID);
-    document.getElementById("logList").innerHTML = logs.length? logs.map(l=>{
-      const d = IM.ALLDAYS.find(x=>x.id===l.taskId);
-      return `<div class="list-item"><b>${d?d.title:'General'}</b> · ${IM.statusLabel(l.status)}<div class="meta">${UI.timeAgo(l.ts)}${l.note?' · '+UI.esc(l.note):''}</div></div>`;
+    document.getElementById("logList").innerHTML = S.logs.length? S.logs.map(l=>{
+      const d = IM.ALLDAYS.find(x=>x.id===l.task_id);
+      return `<div class="list-item"><b>${d?d.title:'General'}</b> · ${IM.statusLabel(l.status)}<div class="meta">${UI.timeAgo(new Date(l.created_at).getTime())}${l.note?' · '+UI.esc(l.note):''}</div></div>`;
     }).join("") : `<div class="empty">No log entries yet.</div>`;
   }
-  function renderList(kind, elId, render){
-    const items = Store.list(kind,ID);
-    document.getElementById(elId).innerHTML = items.length? items.map(render).join("") : `<div class="empty">Nothing here yet.</div>`;
-    document.querySelectorAll(`#${elId} .del`).forEach(b=>b.addEventListener("click",()=>{ Store.remove(kind,ID,b.dataset.id); refreshAll(); }));
+  function renderListInto(arr, elId, render, table){
+    document.getElementById(elId).innerHTML = arr.length? arr.map(render).join("") : `<div class="empty">Nothing here yet.</div>`;
+    document.querySelectorAll(`#${elId} .del`).forEach(b=>b.addEventListener("click", async ()=>{ await DB.remove(table,b.dataset.id); await refreshAll(); }));
   }
-  function renderJournal(){ renderList("journal","jList",j=>`<div class="list-item"><button class="del" data-id="${j.id}" aria-label="Delete">✕</button>${UI.esc(j.content)}<div class="meta">${UI.timeAgo(j.ts)}</div></div>`); }
-  function renderDeliverables(){ renderList("deliverables","dList",d=>`<div class="list-item"><button class="del" data-id="${d.id}" aria-label="Delete">✕</button><b>${UI.esc(d.title)}</b> <span class="pill ${d.status==='approved'?'good':d.status==='revise'?'warn':''}">${d.status}</span><div class="meta">${d.link?`<a href="${UI.esc(d.link)}" target="_blank" rel="noopener" style="color:var(--primary)">Open link ↗</a> · `:''}${UI.timeAgo(d.ts)}</div></div>`); }
-  function renderAchievements(){ renderList("achievements","aList",a=>`<div class="list-item"><button class="del" data-id="${a.id}" aria-label="Delete">✕</button>★ ${UI.esc(a.text)}<div class="meta">${UI.timeAgo(a.ts)}</div></div>`); }
+  function renderJournal(){ renderListInto(S.journal_entries,"jList",j=>`<div class="list-item"><button class="del" data-id="${j.id}" aria-label="Delete">✕</button>${UI.esc(j.content)}<div class="meta">${UI.timeAgo(new Date(j.created_at).getTime())}</div></div>`,"journal_entries"); }
+  function renderDeliverables(){ renderListInto(S.deliverables,"dList",d=>`<div class="list-item"><button class="del" data-id="${d.id}" aria-label="Delete">✕</button><b>${UI.esc(d.title)}</b> <span class="pill ${d.status==='approved'?'good':d.status==='revise'?'warn':''}">${d.status}</span><div class="meta">${d.link?`<a href="${UI.esc(d.link)}" target="_blank" rel="noopener" style="color:var(--primary)">Open link ↗</a> · `:''}${UI.timeAgo(new Date(d.created_at).getTime())}</div></div>`,"deliverables"); }
+  function renderAchievements(){ renderListInto(S.achievements,"aList",a=>`<div class="list-item"><button class="del" data-id="${a.id}" aria-label="Delete">✕</button>★ ${UI.esc(a.text)}<div class="meta">${UI.timeAgo(new Date(a.created_at).getTime())}</div></div>`,"achievements"); }
   function renderFeedback(){
-    const fb = Store.list("feedback",ID);
-    document.getElementById("fbList").innerHTML = fb.length? fb.map(f=>{
-      const a = Store.user(f.authorId);
-      return `<div class="feedback-item"><div class="who-row"><span class="avatar sm">${a?UI.initials(a.name):'?'}</span> ${a?a.name:'Mentor'} · ${UI.timeAgo(f.ts)}${f.kind==='evaluation'?' · evaluation':''}</div>${UI.esc(f.content)}</div>`;
-    }).join("") : `<div class="empty">No feedback yet. It'll appear here when your mentor adds it.</div>`;
+    document.getElementById("fbList").innerHTML = S.feedback.length? S.feedback.map(f=>
+      `<div class="feedback-item"><div class="who-row"><span class="avatar sm">★</span> Program staff · ${UI.timeAgo(new Date(f.created_at).getTime())}${f.kind==='evaluation'?' · evaluation':''}</div>${UI.esc(f.content)}</div>`
+    ).join("") : `<div class="empty">No feedback yet. It'll appear here when your mentor adds it.</div>`;
   }
-  function refreshAll(){ renderStats(); renderRoadmap(); renderLogs(); renderJournal(); renderDeliverables(); renderAchievements(); renderFeedback(); }
 
-  // tabs
-  function showTab(name){
-    document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===name));
-    document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("active",p.dataset.pane===name));
+  function wireTabs(){
+    function showTab(name){
+      document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===name));
+      document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("active",p.dataset.pane===name));
+    }
+    document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+    document.querySelectorAll("[data-tab]").forEach(b=>{ if(!b.closest(".tabs")) b.addEventListener("click",()=>{ showTab(b.dataset.tab); scrollTo({top:0,behavior:'smooth'}); }); });
   }
-  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
-  document.querySelectorAll("[data-tab]").forEach(b=>{ if(!b.closest(".tabs")) b.addEventListener("click",()=>{ showTab(b.dataset.tab); window.scrollTo({top:0,behavior:'smooth'}); }); });
-
-  // forms
-  document.getElementById("logForm").addEventListener("submit",e=>{e.preventDefault();
-    Store.setStatus(ID,+document.getElementById("logTask").value,document.getElementById("logStatus").value,document.getElementById("logNote").value.trim());
-    document.getElementById("logNote").value=""; refreshAll(); });
-  document.getElementById("jForm").addEventListener("submit",e=>{e.preventDefault();
-    const v=document.getElementById("jText").value.trim(); if(!v)return; Store.add("journal",ID,{content:v}); document.getElementById("jText").value=""; renderJournal(); });
-  document.getElementById("dForm").addEventListener("submit",e=>{e.preventDefault();
-    const t=document.getElementById("dTitle").value.trim(); if(!t)return;
-    Store.add("deliverables",ID,{title:t,link:document.getElementById("dLink").value.trim(),status:"submitted"});
-    document.getElementById("dTitle").value="";document.getElementById("dLink").value=""; renderDeliverables(); });
-  document.getElementById("aForm").addEventListener("submit",e=>{e.preventDefault();
-    const v=document.getElementById("aText").value.trim(); if(!v)return; Store.add("achievements",ID,{text:v}); document.getElementById("aText").value=""; renderAchievements(); });
-
-  refreshAll();
+  function wireForms(){
+    document.getElementById("logForm").addEventListener("submit", async e=>{e.preventDefault();
+      await DB.setStatus(ID,+document.getElementById("logTask").value,document.getElementById("logStatus").value,document.getElementById("logNote").value.trim());
+      document.getElementById("logNote").value=""; await refreshProgress(); });
+    document.getElementById("jForm").addEventListener("submit", async e=>{e.preventDefault();
+      const v=document.getElementById("jText").value.trim(); if(!v)return; await DB.add("journal_entries",ID,{content:v}); document.getElementById("jText").value=""; S.journal_entries=await DB.list("journal_entries",ID); renderJournal(); });
+    document.getElementById("dForm").addEventListener("submit", async e=>{e.preventDefault();
+      const t=document.getElementById("dTitle").value.trim(); if(!t)return;
+      await DB.add("deliverables",ID,{title:t,link:document.getElementById("dLink").value.trim()||null,status:"submitted"});
+      document.getElementById("dTitle").value="";document.getElementById("dLink").value=""; S.deliverables=await DB.list("deliverables",ID); renderDeliverables(); });
+    document.getElementById("aForm").addEventListener("submit", async e=>{e.preventDefault();
+      const v=document.getElementById("aText").value.trim(); if(!v)return; await DB.add("achievements",ID,{text:v}); document.getElementById("aText").value=""; S.achievements=await DB.list("achievements",ID); renderAchievements(); });
+  }
 </script>
 </body>
 </html>

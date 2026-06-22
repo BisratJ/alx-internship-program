@@ -1,11 +1,9 @@
-/* ============ ALX Intern Manager - data layer + store API ============ */
-/* Free, client-side (localStorage). Structured so it can later swap to a
-   free Supabase tier without changing the UI: all access goes through `Store`. */
+/* ============ ALX Intern Manager - Supabase data layer ============ */
+/* Real cross-device backend. All DB access goes through `DB` (async).
+   Roadmap content (IM.PHASES) is static; people/roles/data live in Supabase. */
 
 const IM = {
-  KEY: "alx-im-state-v3",
-  SESSION: "alx-im-session",
-  THEME: "alx-theme",
+  COHORT: { name: "Addis Sprint · Jun 2026" },
   STATUSES: [
     { id: "not_started", label: "Not Started" },
     { id: "in_progress", label: "In Progress" },
@@ -30,124 +28,100 @@ const IM = {
         { id: 10, label: "Sat · Day 10", title: "The Grand Finale", tag: "Flagship", flag: true, desc: "Applicant Info Session driving real-time registrations, followed by an Ambassador appreciation mixer." },
       ] },
   ],
+  THEME: "alx-theme",
 };
 IM.ALLDAYS = IM.PHASES.flatMap(p => p.days.map(d => ({ ...d, phase: p.id })));
 IM.statusLabel = id => (IM.STATUSES.find(s => s.id === id) || IM.STATUSES[0]).label;
 
-IM.USERS = [
-  { id: "u-admin",    name: "Admin",          email: "admin@alxinternship.app", role: "admin",  pillar: "Program Manager" },
-  { id: "u-bitania",  name: "Bitania Dereje", email: "biti.dereje@gmail.com",   role: "intern", pillar: "Event Details Lead" },
-  { id: "u-yosabeth", name: "Yosabeth Yared", email: "yosabethyared@gmail.com", role: "intern", pillar: "Marketing & Content" },
-  { id: "u-juliana",  name: "Juliana Mussie", email: "julianamussie@gmail.com", role: "intern", pillar: "Outreach & Leads" },
-  { id: "u-mariam",   name: "Mariam Sami",    email: "mariam2010sami@gmail.com",role: "intern", pillar: "Ops & Budget Control" },
-];
-IM.COHORT = { name: "Addis Sprint · Jun 2026" };
+/* pure metric helpers operate on a {taskId:{status}} map */
+IM.metrics = map => {
+  const total = IM.ALLDAYS.length;
+  const by = s => IM.ALLDAYS.filter(d => (map[d.id] || {}).status === s).length;
+  const completed = by("completed");
+  return { total, completed, inProgress: by("in_progress"), blocked: by("blocked"),
+    pending: total - completed, pct: Math.round(completed / total * 100) };
+};
+IM.phaseMetrics = (map, phaseId) => {
+  const days = IM.PHASES.find(p => p.id === phaseId).days;
+  const done = days.filter(d => (map[d.id] || {}).status === "completed").length;
+  return { done, total: days.length, pct: Math.round(done / days.length * 100) };
+};
+IM.isAtRisk = (map, lastTs) => {
+  const m = IM.metrics(map);
+  const stale = lastTs > 0 && (Date.now() - lastTs) > 3 * 86400000;
+  return m.blocked > 0 || (stale && m.pct < 100);
+};
 
-/* ---------- clean production seed (no demo data) ---------- */
-function seedState() {
-  const s = { progress: {}, logs: {}, journal: {}, deliverables: {}, achievements: {}, feedback: {} };
-  IM.USERS.filter(u => u.role === "intern").forEach(u => {
-    s.progress[u.id] = {};     // all tasks start "not_started"
-    s.logs[u.id] = [];
-    s.journal[u.id] = [];
-    s.deliverables[u.id] = [];
-    s.achievements[u.id] = [];
-    s.feedback[u.id] = [];
-  });
-  return s;
-}
+/* ---------- Supabase client + async DB API ---------- */
+const sb = window.supabase.createClient(window.SB_URL, window.SB_ANON);
 
-/* ---------- Store: the only thing the UI talks to ---------- */
-const Store = {
-  _state: null,
-  init() {
-    let s; try { s = JSON.parse(localStorage.getItem(IM.KEY)); } catch (e) { s = null; }
-    if (!s || !s.progress) s = seedState();
-    this._state = s; this._save();
-    return this;
+const DB = {
+  /* auth */
+  async session() { const { data } = await sb.auth.getSession(); return data.session; },
+  async me() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return null;
+    const { data } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    // fall back to a minimal profile if the row isn't there yet
+    return data || { id: user.id, email: user.email, full_name: user.email, role: "intern", pillar: "" };
   },
-  _save() { try { localStorage.setItem(IM.KEY, JSON.stringify(this._state)); } catch (e) {} },
+  async signIn(email) {
+    return await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+  },
+  async signOut() { await sb.auth.signOut(); },
 
-  /* session / auth (demo: pick a profile; swap for OAuth later) */
-  login(userId) { try { localStorage.setItem(IM.SESSION, userId); } catch (e) {} },
-  logout() { try { localStorage.removeItem(IM.SESSION); } catch (e) {} },
-  currentUser() {
-    let id; try { id = localStorage.getItem(IM.SESSION); } catch (e) {}
-    return IM.USERS.find(u => u.id === id) || null;
+  /* people */
+  async interns() {
+    const { data } = await sb.from("profiles").select("*").eq("role", "intern").order("full_name");
+    return data || [];
   },
+  async profile(id) { const { data } = await sb.from("profiles").select("*").eq("id", id).maybeSingle(); return data; },
 
-  users: () => IM.USERS,
-  user: id => IM.USERS.find(u => u.id === id),
-  interns: () => IM.USERS.filter(u => u.role === "intern"),
-
-  progress(internId) {
-    const p = this._state ? this._state.progress[internId] : Store._state.progress[internId];
-    return p || {};
+  /* per-intern data */
+  async progress(internId) {
+    const { data } = await sb.from("task_progress").select("*").eq("intern_id", internId);
+    const map = {}; (data || []).forEach(r => map[r.task_id] = { status: r.status, note: r.note, updated_at: r.updated_at });
+    return map;
   },
-  setStatus(internId, taskId, status, note) {
-    const st = Store._state; st.progress[internId] = st.progress[internId] || {};
-    st.progress[internId][taskId] = { status, note: note || (st.progress[internId][taskId]||{}).note || "", updatedAt: Date.now() };
-    st.logs[internId] = st.logs[internId] || [];
-    st.logs[internId].unshift({ id: "l" + Date.now(), taskId, status, note: note || "", ts: Date.now() });
-    st.logs[internId] = st.logs[internId].slice(0, 60);
-    Store._save();
+  async setStatus(internId, taskId, status, note) {
+    await sb.from("task_progress").upsert(
+      { intern_id: internId, task_id: taskId, status, note: note || null, updated_at: new Date().toISOString() },
+      { onConflict: "intern_id,task_id" });
+    await sb.from("activity_logs").insert({ intern_id: internId, task_id: taskId, status, note: note || null });
   },
-  setNote(internId, taskId, note) {
-    const st = Store._state; st.progress[internId][taskId] = st.progress[internId][taskId] || { status: "not_started", updatedAt: Date.now() };
-    st.progress[internId][taskId].note = note; Store._save();
+  async setNote(internId, taskId, note) {
+    const { data } = await sb.from("task_progress").select("status").eq("intern_id", internId).eq("task_id", taskId).maybeSingle();
+    await sb.from("task_progress").upsert(
+      { intern_id: internId, task_id: taskId, status: data ? data.status : "not_started", note },
+      { onConflict: "intern_id,task_id" });
   },
-
-  list(kind, internId) { return (Store._state[kind] && Store._state[kind][internId]) || []; },
-  add(kind, internId, obj) {
-    const st = Store._state; st[kind][internId] = st[kind][internId] || [];
-    st[kind][internId].unshift({ id: kind[0] + Date.now(), ts: Date.now(), ...obj });
-    Store._save();
+  async logs(internId, limit = 40) {
+    const { data } = await sb.from("activity_logs").select("*").eq("intern_id", internId).order("created_at", { ascending: false }).limit(limit);
+    return data || [];
   },
-  remove(kind, internId, id) {
-    const st = Store._state; st[kind][internId] = (st[kind][internId] || []).filter(x => x.id !== id); Store._save();
+  async lastActivity(internId) {
+    const { data } = await sb.from("activity_logs").select("created_at").eq("intern_id", internId).order("created_at", { ascending: false }).limit(1);
+    return data && data[0] ? new Date(data[0].created_at).getTime() : 0;
   },
-  setDeliverableStatus(internId, id, status) {
-    const arr = Store._state.deliverables[internId] || [];
-    const d = arr.find(x => x.id === id); if (d) { d.status = status; Store._save(); }
+  async list(table, internId) {
+    const { data } = await sb.from(table).select("*").eq("intern_id", internId).order("created_at", { ascending: false });
+    return data || [];
   },
-
-  /* metrics */
-  metrics(internId) {
-    const prog = Store.progress(internId);
-    const total = IM.ALLDAYS.length;
-    const by = s => IM.ALLDAYS.filter(d => (prog[d.id] || {}).status === s).length;
-    const completed = by("completed");
-    return { total, completed, inProgress: by("in_progress"), blocked: by("blocked"),
-      pending: total - completed, pct: Math.round(completed / total * 100) };
+  async add(table, internId, obj) { await sb.from(table).insert({ intern_id: internId, ...obj }); },
+  async remove(table, id) { await sb.from(table).delete().eq("id", id); },
+  async setDeliverableStatus(id, status) { await sb.from("deliverables").update({ status }).eq("id", id); },
+  async addFeedback(internId, authorId, kind, content) {
+    await sb.from("feedback").insert({ intern_id: internId, author_id: authorId, kind, content });
   },
-  phaseMetrics(internId, phaseId) {
-    const prog = Store.progress(internId);
-    const days = IM.PHASES.find(p => p.id === phaseId).days;
-    const done = days.filter(d => (prog[d.id] || {}).status === "completed").length;
-    return { done, total: days.length, pct: Math.round(done / days.length * 100) };
+  /* cohort rollup: returns array of {profile, map, last, metrics} */
+  async cohort() {
+    const interns = await DB.interns();
+    return await Promise.all(interns.map(async p => {
+      const map = await DB.progress(p.id);
+      const last = await DB.lastActivity(p.id);
+      return { p, map, last, m: IM.metrics(map), atRisk: IM.isAtRisk(map, last) };
+    }));
   },
-  lastActivity(internId) {
-    const logs = Store.list("logs", internId);
-    return logs.length ? logs[0].ts : 0;
-  },
-  isAtRisk(internId) {
-    const m = Store.metrics(internId);
-    const last = Store.lastActivity(internId);
-    // only "stale" once they've actually started; a brand-new intern isn't at risk
-    const stale = last > 0 && (Date.now() - last) > 3 * 86400000;
-    return m.blocked > 0 || (stale && m.pct < 100);
-  },
-  cohortMetrics() {
-    const interns = Store.interns();
-    const pcts = interns.map(i => Store.metrics(i.id).pct);
-    const avg = Math.round(pcts.reduce((a, b) => a + b, 0) / interns.length);
-    const blocked = interns.filter(i => Store.metrics(i.id).blocked > 0).length;
-    const atRisk = interns.filter(i => Store.isAtRisk(i.id)).length;
-    const completedTasks = interns.reduce((n, i) => n + Store.metrics(i.id).completed, 0);
-    return { avg, blocked, atRisk, count: interns.length,
-      completedTasks, totalTasks: interns.length * IM.ALLDAYS.length };
-  },
-  reset() { try { localStorage.removeItem(IM.KEY); } catch (e) {} Store.init(); },
 };
 
 /* ---------- shared UI helpers ---------- */
@@ -166,6 +140,10 @@ const UI = {
       r.setAttribute("data-theme", n); try { localStorage.setItem(IM.THEME, n); } catch (e) {}
     });
   },
+  reveal() {
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .12 });
+    document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+  },
   timeAgo(ts) {
     if (!ts) return "no activity";
     const s = Math.floor((Date.now() - ts) / 1000);
@@ -175,7 +153,7 @@ const UI = {
     return Math.floor(s / 86400) + "d ago";
   },
   esc(t) { return String(t == null ? "" : t).replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c])); },
-  initials(name) { return name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase(); },
+  initials(name) { return (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase(); },
   ring(pct, size) {
     size = size || 54; const r = (size - 8) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
     const col = pct === 100 ? "var(--jungle)" : pct >= 50 ? "var(--primary)" : "var(--sunflower)";
@@ -186,7 +164,6 @@ const UI = {
       <text x="50%" y="50%" dy=".35em" text-anchor="middle" font-size="${size*0.26}" font-weight="700" fill="var(--text)">${pct}%</text>
     </svg>`;
   },
-  // ALX logo inline (themes via .logo svg path{fill:var(--logo)})
   logo: `<svg viewBox="100 70 170 90" role="img" aria-label="ALX"><g>
     <path d="M258.698 128.735L244.107 114.233L258.705 99.6342L260 98.3393L258.705 97.0445L248.931 87.2703L247.636 85.9755L246.341 87.2703L231.743 101.869L217.241 87.2777L215.946 85.9755L214.644 87.2703L204.869 97.0445L203.582 98.3393L204.862 99.6342L219.379 114.233L204.869 128.742L203.575 130.037L204.869 131.332L214.644 141.106L215.938 142.401L217.233 141.106L231.743 126.596L246.349 141.113L247.636 142.401L248.931 141.106L258.705 131.332L260 130.03L258.698 128.735Z"/>
     <path d="M177.68 85.1168V153.506H195.822V77L177.68 85.1168Z"/>

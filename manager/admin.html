@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -61,174 +63,192 @@
 
 <script src="data.js"></script>
 <script>
-  Store.init();
-  const me = Store.currentUser();
-  if(!me){ location.href="index.html"; }
-  else if(me.role==="intern"){ location.href="intern.html"; }
-  document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
-  document.getElementById("navAvatar").textContent = UI.initials(me.name);
-  document.getElementById("cohortName").textContent = IM.COHORT.name + " · " + Store.interns().length + " interns";
-  UI.wireToggle(document.getElementById("themeToggle"));
-  document.getElementById("logout").addEventListener("click",()=>{ Store.logout(); location.href="index.html"; });
+  let me, COH = [], byId = {};
+  const drawer = document.getElementById("drawer"), bg = document.getElementById("drawerBg");
 
-  const statusPill = id => { const m=Store.metrics(id);
-    if(m.blocked>0) return '<span class="pill bad">Blocked</span>';
-    if(Store.isAtRisk(id)) return '<span class="pill warn">At risk</span>';
-    if(m.pct===100) return '<span class="pill good">Complete</span>';
-    return '<span class="pill good">On track</span>'; };
+  (async function boot(){
+    if (!(await DB.session())) { location.href = "index.html"; return; }
+    me = await DB.me();
+    if (me && me.role === "intern") { location.href = "intern.html"; return; }
+    document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
+    document.getElementById("navAvatar").textContent = UI.initials(me.full_name || me.email || "Admin");
+    UI.wireToggle(document.getElementById("themeToggle"));
+    document.getElementById("logout").addEventListener("click", async ()=>{ await DB.signOut(); location.href="index.html"; });
+    wireViewToggle(); wireExport(); wireDrawerBase();
+    await loadCohort();
+  })();
 
+  function tableSelected(){ return !!document.querySelector('#viewToggle [data-view="table"][aria-selected="true"]'); }
+
+  async function loadCohort(){
+    COH = await DB.cohort();
+    byId = {}; COH.forEach(c => byId[c.p.id] = c);
+    document.getElementById("cohortName").textContent = IM.COHORT.name + " · " + COH.length + " intern" + (COH.length===1?"":"s");
+    renderKpis(); renderAttention(); renderCards(); renderReport();
+    if (tableSelected()) renderTable(); else renderCards();
+  }
+
+  function pillFor(c){
+    if(c.m.blocked>0) return '<span class="pill bad">Blocked</span>';
+    if(c.atRisk) return '<span class="pill warn">At risk</span>';
+    if(c.m.pct===100) return '<span class="pill good">Complete</span>';
+    return '<span class="pill good">On track</span>';
+  }
+  function agg(){
+    const count=COH.length, total=IM.ALLDAYS.length;
+    const completedTasks=COH.reduce((n,c)=>n+c.m.completed,0);
+    const totalTasks=count*total;
+    const avg=count?Math.round(COH.reduce((n,c)=>n+c.m.pct,0)/count):0;
+    const blocked=COH.filter(c=>c.m.blocked>0).length;
+    const atRisk=COH.filter(c=>c.atRisk).length;
+    return {count,completedTasks,totalTasks,avg,blocked,atRisk};
+  }
   function renderKpis(){
-    const c = Store.cohortMetrics();
+    const c=agg();
     document.getElementById("kpis").innerHTML = `
-      <div class="metric accent"><div class="mlabel">Avg completion</div><div class="mval">${c.avg}%</div><div class="msub">${c.completedTasks}/${c.totalTasks} tasks</div></div>
-      <div class="metric"><div class="mlabel">Interns</div><div class="mval">${c.count}</div><div class="msub">in cohort</div></div>
+      <div class="metric accent"><div class="mlabel">Avg completion</div><div class="mval">${c.avg}%</div><div class="msub">${c.completedTasks}/${c.totalTasks||0} tasks</div></div>
+      <div class="metric"><div class="mlabel">Interns</div><div class="mval">${c.count}</div><div class="msub">signed in</div></div>
       <div class="metric"><div class="mlabel">At risk</div><div class="mval" style="color:var(--sunflower)">${c.atRisk}</div><div class="msub">need a nudge</div></div>
       <div class="metric"><div class="mlabel">Blocked</div><div class="mval" style="color:var(--blocked)">${c.blocked}</div><div class="msub">need attention</div></div>`;
   }
   function renderAttention(){
-    const flagged = Store.interns().filter(i=>Store.isAtRisk(i.id));
+    const flagged = COH.filter(c=>c.atRisk);
     document.getElementById("attention").innerHTML = flagged.length? `<div class="attention"><h3>⚠ Needs attention</h3>${
-      flagged.map(i=>{const m=Store.metrics(i.id);const reason=m.blocked>0?`${m.blocked} task(s) blocked`:`no activity in ${Math.floor((Date.now()-Store.lastActivity(i.id))/86400000)}d`;
-      return `<div class="row"><span class="avatar sm">${UI.initials(i.name)}</span><b>${i.name}</b> · ${reason} <button class="btn btn-ghost btn-sm" style="margin-left:auto" data-open="${i.id}">Open</button></div>`;}).join("")
+      flagged.map(c=>{const reason=c.m.blocked>0?`${c.m.blocked} task(s) blocked`:`no activity in ${Math.floor((Date.now()-c.last)/86400000)}d`;
+      return `<div class="row"><span class="avatar sm">${UI.initials(c.p.full_name||c.p.email)}</span><b>${UI.esc(c.p.full_name||c.p.email)}</b> · ${reason} <button class="btn btn-ghost btn-sm" style="margin-left:auto" data-open="${c.p.id}">Open</button></div>`;}).join("")
     }</div>` : "";
     wireOpen();
   }
   function renderCards(){
-    document.getElementById("cards").innerHTML = Store.interns().map(i=>{
-      const m=Store.metrics(i.id);
-      return `<button class="icard" data-open="${i.id}">
-        <div class="top"><span class="avatar">${UI.initials(i.name)}</span><div><div class="nm">${i.name}</div><div class="pl">${i.pillar}</div></div></div>
-        <div class="mid">${UI.ring(m.pct,56)}<div style="text-align:right">${statusPill(i.id)}<div class="pl" style="margin-top:6px">${m.completed}/${m.total} done</div></div></div>
-        <div class="foot"><span>Last active</span><span>${UI.timeAgo(Store.lastActivity(i.id))}</span></div>
-      </button>`;
-    }).join("");
+    if(!COH.length){ document.getElementById("cards").innerHTML = `<div class="empty">No interns have signed in yet. They'll appear here after their first login.</div>`; return; }
+    document.getElementById("cards").innerHTML = COH.map(c=>`
+      <button class="icard" data-open="${c.p.id}">
+        <div class="top"><span class="avatar">${UI.initials(c.p.full_name||c.p.email)}</span><div><div class="nm">${UI.esc(c.p.full_name||c.p.email)}</div><div class="pl">${UI.esc(c.p.pillar||'Intern')}</div></div></div>
+        <div class="mid">${UI.ring(c.m.pct,56)}<div style="text-align:right">${pillFor(c)}<div class="pl" style="margin-top:6px">${c.m.completed}/${c.m.total} done</div></div></div>
+        <div class="foot"><span>Last active</span><span>${UI.timeAgo(c.last)}</span></div>
+      </button>`).join("");
     wireOpen();
   }
   function renderTable(){
     document.getElementById("tableWrap").innerHTML = `<div class="table-scroll"><table class="ctable"><thead><tr>
       <th>Intern</th><th>Pillar</th><th>Progress</th><th>Status</th><th>Blocked</th><th>Last active</th></tr></thead><tbody>${
-      Store.interns().map(i=>{const m=Store.metrics(i.id);
-        return `<tr data-open="${i.id}"><td><div class="nmcell"><span class="avatar sm">${UI.initials(i.name)}</span>${i.name}</div></td>
-        <td>${i.pillar}</td><td><span class="prog"><span class="minibar"><i style="width:${m.pct}%"></i></span>${m.pct}%</span></td>
-        <td>${statusPill(i.id)}</td><td>${m.blocked||"0"}</td><td>${UI.timeAgo(Store.lastActivity(i.id))}</td></tr>`;}).join("")
+      COH.map(c=>`<tr data-open="${c.p.id}"><td><div class="nmcell"><span class="avatar sm">${UI.initials(c.p.full_name||c.p.email)}</span>${UI.esc(c.p.full_name||c.p.email)}</div></td>
+        <td>${UI.esc(c.p.pillar||'Intern')}</td><td><span class="prog"><span class="minibar"><i style="width:${c.m.pct}%"></i></span>${c.m.pct}%</span></td>
+        <td>${pillFor(c)}</td><td>${c.m.blocked||"0"}</td><td>${UI.timeAgo(c.last)}</td></tr>`).join("")
     }</tbody></table></div>`;
     wireOpen();
   }
   function renderReport(){
-    const c=Store.cohortMetrics();
-    const dist = Store.interns().map(i=>`${i.name.split(" ")[0]} ${Store.metrics(i.id).pct}%`).join(" · ");
+    const c=agg();
+    const dist = COH.map(x=>`${(x.p.full_name||x.p.email).split(" ")[0]} ${x.m.pct}%`).join(" · ") || "—";
     document.getElementById("report").innerHTML = `
       <div class="perf"><div class="pgrid">
         <div class="pcell"><b>${c.avg}%</b><span>Average completion</span></div>
         <div class="pcell"><b>${c.completedTasks}</b><span>Tasks completed (cohort)</span></div>
         <div class="pcell"><b>${c.atRisk}</b><span>Interns at risk</span></div>
-        <div class="pcell"><b>${Math.round(c.completedTasks/c.totalTasks*100)}%</b><span>Cohort throughput</span></div>
+        <div class="pcell"><b>${c.totalTasks?Math.round(c.completedTasks/c.totalTasks*100):0}%</b><span>Cohort throughput</span></div>
       </div></div>
       <div class="muted" style="font-size:.86rem;margin-top:12px">Per-intern: ${dist}</div>`;
   }
 
-  // view toggle
-  document.getElementById("viewToggle").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
-    document.getElementById("viewToggle").querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected","false"));
-    b.setAttribute("aria-selected","true");
-    const cards=b.dataset.view==="cards";
-    document.getElementById("cards").style.display=cards?"grid":"none";
-    document.getElementById("tableWrap").style.display=cards?"none":"block";
-    if(!cards) renderTable();
-  }));
-
-  // CSV export
-  document.getElementById("exportCsv").addEventListener("click",()=>{
-    const rows=[["Name","Email","Pillar","Completion %","Completed","Blocked","Status","Last active"]];
-    Store.interns().forEach(i=>{const m=Store.metrics(i.id);
-      rows.push([i.name,i.email,i.pillar,m.pct,m.completed,m.blocked, m.blocked>0?"Blocked":Store.isAtRisk(i.id)?"At risk":"On track", new Date(Store.lastActivity(i.id)).toISOString().slice(0,10)]);});
-    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="alx-cohort-report.csv";a.click();URL.revokeObjectURL(a.href);
-  });
+  function wireViewToggle(){
+    document.getElementById("viewToggle").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+      document.getElementById("viewToggle").querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected","false"));
+      b.setAttribute("aria-selected","true");
+      const cards=b.dataset.view==="cards";
+      document.getElementById("cards").style.display=cards?"grid":"none";
+      document.getElementById("tableWrap").style.display=cards?"none":"block";
+      if(!cards) renderTable();
+    }));
+  }
+  function wireExport(){
+    document.getElementById("exportCsv").addEventListener("click",()=>{
+      const rows=[["Name","Email","Pillar","Completion %","Completed","Blocked","Status","Last active"]];
+      COH.forEach(c=>rows.push([c.p.full_name||"",c.p.email,c.p.pillar||"",c.m.pct,c.m.completed,c.m.blocked,
+        c.m.blocked>0?"Blocked":c.atRisk?"At risk":"On track", c.last?new Date(c.last).toISOString().slice(0,10):"—"]));
+      const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="alx-cohort-report.csv";a.click();URL.revokeObjectURL(a.href);
+    });
+  }
 
   /* ---------- drawer / intern profile ---------- */
-  const drawer=document.getElementById("drawer"), bg=document.getElementById("drawerBg");
   function closeDrawer(){ drawer.classList.remove("open"); bg.classList.remove("open"); }
-  bg.addEventListener("click",closeDrawer);
-  document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeDrawer(); });
+  function wireDrawerBase(){
+    bg.addEventListener("click",closeDrawer);
+    document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeDrawer(); });
+  }
   function wireOpen(){ document.querySelectorAll("[data-open]").forEach(el=>{ el.onclick=()=>openIntern(el.dataset.open); }); }
 
-  let DTAB="overview";
-  function openIntern(id){
-    const i=Store.user(id), m=Store.metrics(id);
+  let DTAB="overview", D=null;
+  async function openIntern(id){
+    const c = byId[id]; if(!c) return;
+    const [prog,logs,journal,deliv,achv,fb] = await Promise.all([
+      DB.progress(id), DB.logs(id), DB.list("journal_entries",id), DB.list("deliverables",id), DB.list("achievements",id), DB.list("feedback",id) ]);
+    D = { id, p:c.p, last:c.last, prog, logs, journal, deliv, achv, fb, m:IM.metrics(prog) };
+    DTAB="overview";
     document.getElementById("dHead").innerHTML = `
-      <span class="avatar lg">${UI.initials(i.name)}</span>
-      <div><div style="font-weight:700;font-size:1.1rem">${i.name}</div><div class="muted" style="font-size:.84rem">${i.pillar} · ${statusPill(id)}</div></div>
+      <span class="avatar lg">${UI.initials(c.p.full_name||c.p.email)}</span>
+      <div><div style="font-weight:700;font-size:1.1rem">${UI.esc(c.p.full_name||c.p.email)}</div><div class="muted" style="font-size:.84rem">${UI.esc(c.p.pillar||'Intern')} · ${pillFor({m:D.m,atRisk:IM.isAtRisk(prog,c.last)})}</div></div>
       <button class="x" aria-label="Close" id="dClose">✕</button>`;
     document.getElementById("dClose").onclick=closeDrawer;
-    DTAB="overview"; renderDrawer(id);
+    renderDrawer();
     drawer.classList.add("open"); bg.classList.add("open");
   }
-  function renderDrawer(id){
-    const i=Store.user(id);
+  async function reloadDrawer(){
+    const [prog,logs,journal,deliv,achv,fb] = await Promise.all([
+      DB.progress(D.id), DB.logs(D.id), DB.list("journal_entries",D.id), DB.list("deliverables",D.id), DB.list("achievements",D.id), DB.list("feedback",D.id) ]);
+    Object.assign(D,{prog,logs,journal,deliv,achv,fb,m:IM.metrics(prog)}); renderDrawer();
+  }
+  function renderDrawer(){
     const tabs=["overview","activity","journal","deliverables","feedback"];
     const labels={overview:"Roadmap",activity:"Activity",journal:"Journal",deliverables:"Deliverables",feedback:"Feedback"};
-    let html=`<div class="tabs">${tabs.map(t=>`<button data-dtab="${t}" aria-selected="${t===DTAB}">${labels[t]}</button>`).join("")}</div><div id="dpane"></div>`;
-    document.getElementById("dBody").innerHTML=html;
-    document.querySelectorAll("[data-dtab]").forEach(b=>b.addEventListener("click",()=>{DTAB=b.dataset.dtab;renderDrawer(id);}));
+    document.getElementById("dBody").innerHTML = `<div class="tabs">${tabs.map(t=>`<button data-dtab="${t}" aria-selected="${t===DTAB}">${labels[t]}</button>`).join("")}</div><div id="dpane"></div>`;
+    document.querySelectorAll("[data-dtab]").forEach(b=>b.addEventListener("click",()=>{DTAB=b.dataset.dtab;renderDrawer();}));
     const pane=document.getElementById("dpane");
 
     if(DTAB==="overview"){
-      const prog=Store.progress(id);
-      pane.innerHTML = `<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">${UI.ring(Store.metrics(id).pct,60)}
-        <div>${IM.PHASES.map(p=>{const pm=Store.phaseMetrics(id,p.id);return `<div class="phase-row" style="min-width:200px"><div class="ptop"><span class="pp">${p.name}</span><span>${pm.done}/${pm.total}</span></div><div class="bar sm"><i style="width:${pm.pct}%"></i></div></div>`;}).join("")}</div></div>`
-        + IM.ALLDAYS.map(d=>{const t=prog[d.id]||{status:"not_started"};
-          return `<div class="ms ${t.status.replace('_','-')}" style="border-radius:10px"><summary style="cursor:default"><div class="node" aria-hidden="true">${t.status==="completed"?"✓":t.status==="blocked"?"!":d.id}</div><div class="sum-main"><div class="dnum">${d.label}</div><div class="mtitle" style="font-size:.94rem">${d.title}</div></div><span class="pill ${t.status==='completed'?'good':t.status==='blocked'?'bad':t.status==='in_progress'?'warn':''}">${IM.statusLabel(t.status)}</span></summary>${t.note?`<div class="body" style="padding-left:72px"><em>${UI.esc(t.note)}</em></div>`:''}</div>`;}).join("");
+      pane.innerHTML = `<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">${UI.ring(D.m.pct,60)}
+        <div>${IM.PHASES.map(p=>{const pm=IM.phaseMetrics(D.prog,p.id);return `<div class="phase-row" style="min-width:200px"><div class="ptop"><span class="pp">${p.name}</span><span>${pm.done}/${pm.total}</span></div><div class="bar sm"><i style="width:${pm.pct}%"></i></div></div>`;}).join("")}</div></div>`
+        + IM.ALLDAYS.map(d=>{const t=D.prog[d.id]||{status:"not_started"};
+          return `<div class="ms ${t.status.replace('_','-')}" style="border-radius:10px;margin-bottom:8px"><summary style="cursor:default"><div class="node" aria-hidden="true">${t.status==="completed"?"✓":t.status==="blocked"?"!":d.id}</div><div class="sum-main"><div class="dnum">${d.label}</div><div class="mtitle" style="font-size:.94rem">${d.title}</div></div><span class="pill ${t.status==='completed'?'good':t.status==='blocked'?'bad':t.status==='in_progress'?'warn':''}">${IM.statusLabel(t.status)}</span></summary>${t.note?`<div class="body" style="padding-left:72px"><em>${UI.esc(t.note)}</em></div>`:''}</div>`;}).join("");
     }
     else if(DTAB==="activity"){
-      const logs=Store.list("logs",id);
-      pane.innerHTML = `<ul class="updates">${logs.length?logs.map(l=>{const d=IM.ALLDAYS.find(x=>x.id===l.taskId);
-        return `<li class="s-${l.status.replace('_','-')}"><div class="u-txt"><b>${d?d.title:'General'}</b> · ${IM.statusLabel(l.status)}${l.note?': '+UI.esc(l.note):''}</div><div class="u-time">${UI.timeAgo(l.ts)}</div></li>`;}).join(""):'<div class="empty">No activity yet.</div>'}</ul>`;
+      pane.innerHTML = `<ul class="updates">${D.logs.length?D.logs.map(l=>{const d=IM.ALLDAYS.find(x=>x.id===l.task_id);
+        return `<li class="s-${(l.status||'').replace('_','-')}"><div class="u-txt"><b>${d?d.title:'General'}</b> · ${IM.statusLabel(l.status)}${l.note?': '+UI.esc(l.note):''}</div><div class="u-time">${UI.timeAgo(new Date(l.created_at).getTime())}</div></li>`;}).join(""):'<div class="empty">No activity yet.</div>'}</ul>`;
     }
     else if(DTAB==="journal"){
-      const j=Store.list("journal",id);
-      pane.innerHTML = j.length? j.map(x=>`<div class="list-item">${UI.esc(x.content)}<div class="meta">${UI.timeAgo(x.ts)}</div></div>`).join(""):'<div class="empty">No journal entries shared.</div>';
+      pane.innerHTML = D.journal.length? D.journal.map(x=>`<div class="list-item">${UI.esc(x.content)}<div class="meta">${UI.timeAgo(new Date(x.created_at).getTime())}</div></div>`).join(""):'<div class="empty">No journal entries shared.</div>';
     }
     else if(DTAB==="deliverables"){
-      const ds=Store.list("deliverables",id);
-      pane.innerHTML = ds.length? ds.map(d=>`<div class="list-item"><b>${UI.esc(d.title)}</b> <span class="pill ${d.status==='approved'?'good':d.status==='revise'?'warn':''}">${d.status}</span>
-        <div class="meta">${d.link?`<a href="${UI.esc(d.link)}" target="_blank" rel="noopener" style="color:var(--primary)">Open ↗</a> · `:''}${UI.timeAgo(d.ts)}</div>
+      pane.innerHTML = D.deliv.length? D.deliv.map(d=>`<div class="list-item"><b>${UI.esc(d.title)}</b> <span class="pill ${d.status==='approved'?'good':d.status==='revise'?'warn':''}">${d.status}</span>
+        <div class="meta">${d.link?`<a href="${UI.esc(d.link)}" target="_blank" rel="noopener" style="color:var(--primary)">Open ↗</a> · `:''}${UI.timeAgo(new Date(d.created_at).getTime())}</div>
         <div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-primary btn-sm" data-appr="${d.id}">Approve</button><button class="btn btn-ghost btn-sm" data-rev="${d.id}">Request revise</button></div></div>`).join(""):'<div class="empty">No deliverables submitted yet.</div>';
-      pane.querySelectorAll("[data-appr]").forEach(b=>b.addEventListener("click",()=>{Store.setDeliverableStatus(id,b.dataset.appr,"approved");renderDrawer(id);}));
-      pane.querySelectorAll("[data-rev]").forEach(b=>b.addEventListener("click",()=>{Store.setDeliverableStatus(id,b.dataset.rev,"revise");renderDrawer(id);}));
+      pane.querySelectorAll("[data-appr]").forEach(b=>b.addEventListener("click", async ()=>{ await DB.setDeliverableStatus(b.dataset.appr,"approved"); await reloadDrawer(); }));
+      pane.querySelectorAll("[data-rev]").forEach(b=>b.addEventListener("click", async ()=>{ await DB.setDeliverableStatus(b.dataset.rev,"revise"); await reloadDrawer(); }));
     }
     else if(DTAB==="feedback"){
-      const fb=Store.list("feedback",id);
       pane.innerHTML = `
         <form id="fbForm" class="logform" style="margin-bottom:16px">
-          <textarea id="fbText" class="full" placeholder="Write feedback for ${i.name.split(' ')[0]}…"></textarea>
+          <textarea id="fbText" class="full" placeholder="Write feedback for ${UI.esc((D.p.full_name||'this intern').split(' ')[0])}…"></textarea>
           <button class="btn btn-primary btn-sm" type="submit">Post feedback</button>
         </form>
         <details class="qa" style="margin-bottom:16px"><summary>Weekly evaluation (rubric)<span class="ic">+</span></summary><div class="ans" style="max-height:none;padding:14px 16px">
-          <div class="rubric">
-            ${["Execution","Communication","Ownership","Growth"].map(k=>`<label>${k}<input type="range" min="1" max="5" value="4" data-r="${k}"><span class="rv">4</span></label>`).join("")}
-          </div>
+          <div class="rubric">${["Execution","Communication","Ownership","Growth"].map(k=>`<label>${k}<input type="range" min="1" max="5" value="4" data-r="${k}"><span class="rv">4</span></label>`).join("")}</div>
           <textarea id="evalSummary" class="full" placeholder="Summary for the week…" style="margin-top:8px"></textarea>
           <button class="btn btn-primary btn-sm" id="saveEval" style="margin-top:8px">Save evaluation</button>
         </div></details>
-        <div id="fbItems">${fb.length?fb.map(f=>{const a=Store.user(f.authorId);
-          return `<div class="feedback-item"><div class="who-row"><span class="avatar sm">${a?UI.initials(a.name):'?'}</span> ${a?a.name:'?'} · ${UI.timeAgo(f.ts)}${f.kind==='evaluation'?' · evaluation':''}</div>${UI.esc(f.content)}</div>`;}).join(""):'<div class="empty">No feedback yet.</div>'}</div>`;
-      pane.querySelector("#fbForm").addEventListener("submit",e=>{e.preventDefault();const v=pane.querySelector("#fbText").value.trim();if(!v)return;
-        Store.add("feedback",id,{authorId:me.id,kind:"comment",content:v});renderDrawer(id);});
+        <div id="fbItems">${D.fb.length?D.fb.map(f=>`<div class="feedback-item"><div class="who-row"><span class="avatar sm">★</span> You · ${UI.timeAgo(new Date(f.created_at).getTime())}${f.kind==='evaluation'?' · evaluation':''}</div>${UI.esc(f.content)}</div>`).join(""):'<div class="empty">No feedback yet.</div>'}</div>`;
+      pane.querySelector("#fbForm").addEventListener("submit", async e=>{e.preventDefault();const v=pane.querySelector("#fbText").value.trim();if(!v)return; await DB.addFeedback(D.id,me.id,"comment",v); await reloadDrawer();});
       pane.querySelectorAll('input[type=range]').forEach(r=>r.addEventListener("input",()=>{r.nextElementSibling.textContent=r.value;}));
-      pane.querySelector("#saveEval").addEventListener("click",()=>{
+      pane.querySelector("#saveEval").addEventListener("click", async ()=>{
         const scores={};pane.querySelectorAll('input[type=range]').forEach(r=>scores[r.dataset.r]=+r.value);
         const sum=pane.querySelector("#evalSummary").value.trim();
         const avg=(Object.values(scores).reduce((a,b)=>a+b,0)/4).toFixed(1);
-        Store.add("feedback",id,{authorId:me.id,kind:"evaluation",content:`Weekly evaluation (avg ${avg}/5): ${sum||'(no summary)'} [${Object.entries(scores).map(([k,v])=>k+' '+v).join(', ')}]`});
-        renderDrawer(id);
+        await DB.addFeedback(D.id,me.id,"evaluation",`Weekly evaluation (avg ${avg}/5): ${sum||'(no summary)'} [${Object.entries(scores).map(([k,v])=>k+' '+v).join(', ')}]`);
+        await reloadDrawer();
       });
     }
   }
-
-  function refresh(){ renderKpis(); renderAttention(); renderCards(); renderReport();
-    if(document.querySelector('#viewToggle [data-view="table"][aria-selected="true"]')) renderTable(); }
-  refresh();
 </script>
 </body>
 </html>
