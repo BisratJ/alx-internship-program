@@ -51,8 +51,15 @@
     btn.disabled = true; btn.textContent = "Sending…";
     const { error } = await DB.signIn(email);
     btn.disabled = false; btn.textContent = "Email me a login link";
-    if (error) { msg.style.color = "var(--blocked)"; msg.textContent = "Couldn't send link: " + error.message; }
-    else { msg.style.color = "var(--jungle)"; msg.textContent = "Check " + email + " for your secure sign-in link."; }
+    if (error) {
+      console.error("sign-in error", error);
+      const detail = error.message || ("status " + (error.status || "unknown"));
+      msg.style.color = "var(--blocked)";
+      msg.textContent = "Couldn't send link: " + detail + ". The free built-in email is capped at ~2/hour; set up SMTP to remove the limit.";
+    } else {
+      msg.style.color = "var(--jungle)";
+      msg.textContent = "Check " + email + " for your secure sign-in link (check spam too).";
+    }
   });
 </script>
 </body>
