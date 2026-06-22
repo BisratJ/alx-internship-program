@@ -286,6 +286,7 @@ select:focus,textarea:focus,input:focus{outline:none;border-color:var(--primary)
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
 .page-head h1{font-size:clamp(1.5rem,3vw,2rem)}
 .page-head .muted{color:var(--muted);font-size:.9rem}
+.page-head .welcome-note{max-width:52ch;margin-top:3px;line-height:1.5}
 .avatar{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.85rem;color:#fff;background:linear-gradient(135deg,var(--tw-blue),var(--purple))}
 .avatar.lg{width:56px;height:56px;font-size:1.05rem}
 .avatar.sm{width:30px;height:30px;font-size:.7rem}

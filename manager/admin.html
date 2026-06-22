@@ -34,7 +34,7 @@
 <main class="app-main" id="main">
   <div class="wrap">
     <div class="page-head">
-      <div><h1>Internship Dashboard</h1><div class="muted" id="cohortName"></div></div>
+      <div><h1 id="hello">Welcome</h1><div class="muted welcome-note" id="welcomeNote"></div><div class="muted" id="cohortName"></div></div>
       <div style="display:flex;gap:10px;align-items:center">
         <div class="seg" id="viewToggle"><button data-view="cards" aria-selected="true">Cards</button><button data-view="table" aria-selected="false">Table</button></div>
         <button class="btn btn-ghost btn-sm" id="exportCsv">Export CSV</button>
@@ -72,6 +72,8 @@
     if (me && me.role === "intern") { location.href = "intern.html"; return; }
     document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
     document.getElementById("navAvatar").textContent = UI.initials(me.full_name || me.email || "Admin");
+    document.getElementById("hello").textContent = "Welcome " + (me.full_name || "Admin") + "!";
+    document.getElementById("welcomeNote").textContent = "Manage, review, and guide the internship experience from here \u2014 with clarity and confidence.";
     UI.wireToggle(document.getElementById("themeToggle"));
     document.getElementById("logout").addEventListener("click", async ()=>{ await DB.signOut(); location.href="index.html"; });
     wireViewToggle(); wireExport(); wireDrawerBase();

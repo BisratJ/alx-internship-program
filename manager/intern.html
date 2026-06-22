@@ -119,7 +119,7 @@
     ID = me.id;
     document.getElementById("brand").innerHTML = UI.logo + '<span class="pname">Intern Manager</span>';
     document.getElementById("navAvatar").textContent = UI.initials(me.full_name || me.email);
-    document.getElementById("hello").textContent = "Welcome, " + (me.full_name || me.email) + ", to your Internship Program.";
+    document.getElementById("hello").textContent = "Welcome " + (me.full_name || me.email) + "! Your Internship Program starts here.";
     document.getElementById("subhead").textContent = (me.pillar || "Intern") + " · " + IM.COHORT.name;
     UI.wireToggle(document.getElementById("themeToggle"));
     document.getElementById("logout").addEventListener("click", async () => { await DB.signOut(); location.href = "index.html"; });
