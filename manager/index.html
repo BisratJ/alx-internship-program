@@ -22,7 +22,11 @@
       <div class="logo" id="brandRow"></div>
       <h1>Log in</h1>
     </div>
-    <div class="sub">Sign in with the email and password set up by your program admin.</div>
+    <div class="seg" id="roleToggle" role="tablist" aria-label="Account type" style="margin:2px 0 16px">
+      <button type="button" data-role="intern" aria-selected="true">Intern</button>
+      <button type="button" data-role="admin" aria-selected="false">Admin</button>
+    </div>
+    <div class="sub">Intern sign-in. Use the email and password set up for you.</div>
     <form class="logform" id="loginForm">
       <input type="email" id="email" placeholder="you@example.com" autocomplete="email" required />
       <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
@@ -35,6 +39,16 @@
 <script src="data.js"></script>
 <script>
   document.getElementById("brandRow").innerHTML = UI.logo;
+
+  // Intern / Admin toggle (adjusts guidance; routing is always by the account's real role)
+  const subEl = document.querySelector(".signin-card .sub");
+  document.querySelectorAll("#roleToggle button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#roleToggle button").forEach(x => x.setAttribute("aria-selected", "false"));
+    b.setAttribute("aria-selected", "true");
+    subEl.textContent = b.dataset.role === "admin"
+      ? "Admin sign-in. Use your program-manager email and password."
+      : "Intern sign-in. Use the email and password set up for you.";
+  }));
 
   async function routeByRole(){
     const me = await DB.me();
