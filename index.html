@@ -51,6 +51,7 @@
 <!-- HERO -->
 <header class="hero" id="top">
   <div class="wrap">
+    <a class="welcome-banner" id="welcomeBanner" hidden></a>
     <div class="eyebrow reveal">ALX · Project-Based Internship</div>
     <h1 class="reveal">Two weeks. <span class="hl">Two live projects.</span> One real-world sprint.</h1>
     <p class="reveal">A 10-day, project-based internship running Tuesday to Saturday across two weeks, moving you from orientation to full project execution by Day 3, building community, driving growth, and owning an end-to-end project lifecycle the ALX way.</p>
@@ -221,7 +222,19 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="manager/data.js"></script>
 <script>
+  // Personalized welcome: if a participant is signed in (manager session), greet them by name.
+  try {
+    const wu = (window.Store && Store.currentUser) ? Store.currentUser() : null;
+    if (wu) {
+      const wb = document.getElementById("welcomeBanner");
+      wb.innerHTML = 'Welcome, <b>' + wu.name + '</b>, to your Internship Program <span aria-hidden="true">&rarr;</span>';
+      wb.href = wu.role === "admin" ? "manager/admin.html" : "manager/intern.html";
+      wb.hidden = false;
+    }
+  } catch (e) {}
+
   function msHTML(d){
     const flag = d.tag === "flag";
     const tagText = flag ? "Flagship event" : d.tag;

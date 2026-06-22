@@ -292,5 +292,9 @@ select:focus,textarea:focus,input:focus{outline:none;border-color:var(--primary)
   .sec-head{margin-bottom:28px}
 }
 .btn-sm{padding:9px 16px;font-size:.85rem}
+.welcome-banner{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:9px 16px;border-radius:999px;font-size:.92rem;font-weight:500;margin-bottom:18px;backdrop-filter:blur(4px);transition:background .2s var(--ease),transform .15s var(--ease)}
+.welcome-banner:hover{background:rgba(255,255,255,.16);transform:translateY(-1px)}
+.welcome-banner b{font-weight:700}
+.welcome-banner[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 :focus-visible{outline:3px solid var(--primary);outline-offset:2px;border-radius:6px}
